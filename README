@@ -1,0 +1,155 @@
+**********************************************************************
+* Author  : Brian Maher <maherb at brimworks dot com>
+* Library : lua_archive - Lua 5.1 interface to libarchive
+*
+* The MIT License
+* 
+* Copyright (c) 2009 Brian Maher
+*
+* Permission is hereby granted, free of charge, to any person obtaining a copy
+* of this software and associated documentation files (the "Software"), to deal
+* in the Software without restriction, including without limitation the rights
+* to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+* copies of the Software, and to permit persons to whom the Software is
+* furnished to do so, subject to the following conditions:
+* 
+* The above copyright notice and this permission notice shall be included in
+* all copies or substantial portions of the Software.
+* 
+* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+* THE SOFTWARE.
+**********************************************************************
+
+To use this library, you need libarchive, get it here:
+     http://code.google.com/p/libarchive/
+
+To build this library, you need GNU Make and make-common here:
+    http://github.com/brimworks/make-common
+
+Loading the library:
+
+    If you built the library as a loadable package
+        [local] archive = require 'archive'
+
+    If you compiled the package statically into your application, call
+    the function "luaopen_archive(L)". It will create a table with the
+    archive functions and leave it on the stack.
+
+-- archive functions --
+
+major, minor, patch = archive.version()
+
+    returns numeric major, minor, and patch versions from the dynamic
+    library.
+
+write = archive.write {
+    compression     = "gzip",
+    format          = "pax-restricted",
+    options         = "compression-level=9,sha1",
+    block_size      = 10240,
+    last_block_size = 1,
+    printer         = function(string) print(string) end,
+}
+
+    Generate an archive.  All parameters are optional.  The printer
+    will be called with nil when EOF is reached, otherwise all output
+    is written to the printer.
+
+    Returns a "write" object with these functions that are used to
+    create your archive:
+
+    write:header(archive.entry)
+
+        Append a new file entry to the archive.
+
+    write:data(string)
+
+        Append the file contents for the last file entry created.
+
+    write:close()
+
+       Be sure to clean-up the resources and close the underlying file
+       handle.
+
+read = archive.read {
+    -- TODO: Various options...
+    events = {
+        header = function(events, archive.entry),
+        data   = function(events, string_data),
+        close  = function(events), -- Called on EOF.
+    }
+}
+
+    Returns an archive read function, that should be repeated be
+    called with the contents of the archive.  When EOF is found, this
+    function must be called with nil.
+
+    The event functions are called appropriately, note that
+    archive.entry objects are defined below.
+
+    read(string)
+
+        Call it with the archive data to be parsed.
+
+
+entry = archive.entry("file.txt")
+    or
+entry = archive.entry(lfs.attributes("file.txt"))
+    or
+entry = archive.entry {
+    inode = ...,
+    dev   = ...,
+    ...
+}
+
+    Create a new archive entry from a file name, set of file
+    attributes created by lfs.attributes(), or a set of manually set
+    attributes.
+
+write = archive.write_disk {
+    options = "secure-nodotdot,secure-symlinks,no-overwrite",    
+}
+
+    Generate on-disk representation of an archive, by handling the
+    various events when parsing an archive.
+
+    write:header(archive.entry)
+
+        Create a file on disk for this archive entry.
+
+    write:data("data to append to archive entry")
+
+        Append data to the last file header created on disk.
+
+    write:close()
+
+       Be sure to clean-up the resources and close the underlying file
+       handle.
+
+read = archive.disk_read {
+    -- TODO: Various options...
+    events = {
+        header = function(events, archive.entry),
+        data   = function(events, string_data),
+        close  = function(events), -- Called on EOF.
+    }
+}
+
+    Read files and file entries from disk.    
+
+    read("path/on/disk/to/file.txt" [, "location/in/archive/file.txt"])
+
+    read(nil) -- For EOF
+
+        Call it with the location of a file on disk and trigger the
+        header and data events.  Call with nil to trigger the close
+        event.
+
+        You may optionally specify the location of the entry as you
+        want it stored in an archive.  Helpful if you are using
+        absolute paths, but want the archive to store relative paths.

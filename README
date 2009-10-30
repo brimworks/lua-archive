@@ -99,9 +99,8 @@ read = archive.read {
 
 entry = archive.entry("file.txt")
     or
-entry = archive.entry(lfs.attributes("file.txt"))
-    or
 entry = archive.entry {
+    path  = ...,
     inode = ...,
     dev   = ...,
     ...
@@ -110,6 +109,11 @@ entry = archive.entry {
     Create a new archive entry from a file name, set of file
     attributes created by lfs.attributes(), or a set of manually set
     attributes.
+
+tbl = entry.as_table()
+ 
+    Returns the entry as a table using the same field names as the
+    table based constructor.
 
 write = archive.write_disk {
     options = "secure-nodotdot,secure-symlinks,no-overwrite",    

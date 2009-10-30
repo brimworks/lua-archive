@@ -10,9 +10,22 @@ function main()
 end
 
 function test_basic()
-   local tfile = io.tmpfile()
-   ar.write { printer = function(str) tfile:write(str) end }
-
+--   local tfile = io.tmpfile()
+   local function printer(ar, str)
+      if ( nil == str ) then
+         io.stderr:write("close()\n")
+      else
+         io.stderr:write("print(" .. #str .. " chars)\n")
+      end
+   end
+   ar.write { printer = printer }
+--[[         printer = function(str)
+            tfile:write(str)
+         end
+      }
+]]--
+   collectgarbage("collect")
+   ok(ar._write_ref_count() == 0, ("ref_count=" .. tostring(ar._write_ref_count()) .. " gc works"))
    -- TODO: Implement me!
 end
 

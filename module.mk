@@ -7,6 +7,10 @@ include $(make-common.dir)/layout.mk
 _lib  := $(lua.c.lib.dir)/archive.so
 _objs := $(call cc.c.to.o,$(addprefix $(_pwd)/, \
     lua_archive.c \
+    lua_archive_write.c \
+    lua_archive_registry.c \
+    lua_archive_read.c \
+    lua_archive_entry.c \
 ))
 
 all: | $(_lib)

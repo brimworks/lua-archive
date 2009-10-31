@@ -197,6 +197,7 @@ static void ar_write_get_printer(lua_State *L, int self_idx) {
 
 //////////////////////////////////////////////////////////////////////
 static int ar_write_destroy(lua_State *L) {
+    fprintf(stderr, "ar_write_destroy\n");
     struct archive** self_ref = ar_write_check(L, 1);
     if ( NULL == *self_ref ) return 0;
 
@@ -229,8 +230,12 @@ static __LA_SSIZE_T ar_write_cb(struct archive * self,
 {
     lua_State* L = (lua_State*)opaque;
 
-    // We are missing!?  Just ignore it.
-    if ( ! lua_archive_get(L, self) ) return 0; // {ud}
+    // We are missing!?
+    if ( ! lua_archive_get(L, self) ) {
+        archive_set_error(self, 0,
+                          "InternalError: write callback called on archive that should already have been garbage collected!");
+        return -1;
+    }
 
     ar_write_get_printer(L, -1); // {ud}, printer
     lua_pushvalue(L, -2); // {ud}, printer, {ud}

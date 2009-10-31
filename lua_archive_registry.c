@@ -44,8 +44,7 @@ void lua_archive_registry(lua_State *L) {
     luaL_newmetatable(L, AR_REGISTRY); // {class}, {meta}
     
     lua_pushvalue(L, -1); // {class}, {meta}, {meta}
-    lua_setfield(L, -2, "__index"); // {class}, {meta}
-
+    lua_setmetatable(L, -2); // {class}, {meta}
 
     lua_pushstring(L, "v"); // {class}, {meta}, "v"
     lua_setfield(L, -2, "__mode"); // {class}, {meta}

@@ -4,8 +4,13 @@
 #include <lua.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+#include <sys/stat.h>
 
 #include "private_archive_entry.h"
+#include "private_archive_registry.h"
+
+#define err(...) (luaL_error(L, __VA_ARGS__))
 
 static int __ref_count = 0;
 
@@ -19,140 +24,361 @@ static int ar_ref_count(lua_State *L) {
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry(lua_State *L) {
-/*
-    archive_entry_new();
+    struct archive_entry** self_ref = (struct archive_entry**)
+        lua_newuserdata(L, sizeof(struct archive_entry*)); // ..., {ud}
+    *self_ref = NULL;
+    luaL_getmetatable(L, AR_ENTRY); // ..., {ud}, {meta}
+    lua_setmetatable(L, -2); // ..., {ud}
+    __ref_count++;
+    *self_ref = archive_entry_new();
+
+    // Register it in the weak metatable:
+    lua_archive_register(L, *self_ref);
 
     if ( lua_istable(L, 1) ) {
+        assert(0 != lua_getmetatable(L, -1)); // ..., {ud}, {meta}
+
+        // Give a reasonable default mode:
+        archive_entry_set_mode(*self_ref, S_IFREG);
 
         // Iterate over the table and call the method with that name
-        lua_pushnil(L);
-        while (lua_next(L, t) != 0) {
-            printf("%s - %s\n",
-                   lua_typename(L, lua_type(L, -2)),
-                   lua_typename(L, lua_type(L, -1)));
-            lua_pop(L, 1);
-        }
-
+        lua_pushnil(L); // ..., {ud}, {meta}, nil
+        while (lua_next(L, 1) != 0) { // ..., {ud}, {meta}, key, value
+            lua_pushvalue(L, -2); // ..., {ud}, {meta}, key, value, key
+            lua_gettable(L, -4); // ..., {ud}, {meta}, key, value, func
+            if ( lua_isnil(L, -1) ) {
+                err("InvalidArgument: '%s' is not a valid field", lua_tostring(L, -3));
+            }
+            lua_pushvalue(L, -5); // ..., {ud}, {meta}, key, value, func, {ud}
+            lua_pushvalue(L, -3); // ..., {ud}, {meta}, key, value, func, {ud}, value
+            lua_call(L, 2, 0); // ..., {ud}, {meta}, key, value
+            lua_pop(L, 1);     // ..., {ud}, {meta}, key
+        } // ..., {ud}, {meta}
+        lua_pop(L, 1);
     } else if ( lua_isstring(L, 1) ) {
         // Create entry from file path.
+        struct stat sb;
+        stat(lua_tostring(L, 1), &sb);
+        archive_entry_copy_stat(*self_ref, &sb);
+        archive_entry_set_pathname(*self_ref, lua_tostring(L, 1));
     }
-*/
-    return 0;
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_destroy(lua_State *L) {
-    struct archive_entry** ar = ar_entry_check(L, 1);
-    if ( *ar != NULL ) {
-        archive_entry_free(*ar);
-        *ar = NULL;
+    struct archive_entry** self_ref = ar_entry_check(L, 1);
+    if ( *self_ref != NULL ) {
+        __ref_count--;
+        archive_entry_free(*self_ref);
+        *self_ref = NULL;
     }
+    return 0;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_fflags(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushstring(L, archive_entry_fflags_text(self));
+    if ( is_set ) {
+        char* invalid = archive_entry_copy_fflags_text(self, lua_tostring(L, 2));
+        if ( NULL != invalid ) {
+            err("InvalidFFlag: '%s' is not a known fflag", invalid);
+        }
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_dev(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushnumber(L, archive_entry_dev(self));
+    if ( is_set ) {
+        archive_entry_set_dev(self, lua_tonumber(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_ino(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushnumber(L, archive_entry_ino(self));
+    if ( is_set ) {
+        archive_entry_set_ino(self, lua_tonumber(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_mode(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushnumber(L, archive_entry_mode(self));
+    if ( is_set ) {
+        archive_entry_set_mode(self, lua_tonumber(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_nlink(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushnumber(L, archive_entry_nlink(self));
+    if ( is_set ) {
+        archive_entry_set_nlink(self, lua_tonumber(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_uid(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushnumber(L, archive_entry_uid(self));
+    if ( is_set ) {
+        archive_entry_set_uid(self, lua_tonumber(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_uname(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushstring(L, archive_entry_uname(self));
+    if ( is_set ) {
+        archive_entry_copy_uname(self, lua_tostring(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_gid(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushnumber(L, archive_entry_gid(self));
+    if ( is_set ) {
+        archive_entry_set_gid(self, lua_tonumber(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_gname(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushstring(L, archive_entry_gname(self));
+    if ( is_set ) {
+        archive_entry_copy_gname(self, lua_tostring(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_rdev(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushnumber(L, archive_entry_rdev(self));
+    if ( is_set ) {
+        archive_entry_set_rdev(self, lua_tonumber(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_atime(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    if ( ! archive_entry_atime_is_set(self) ) {
+        lua_pushnil(L);
+    } else {
+        lua_Number atime = archive_entry_atime(self) +
+            archive_entry_atime_nsec(self)/1e+9;
+        lua_pushnumber(L, atime);
+    }
+    if ( is_set ) {
+        if ( lua_isnil(L, 2) ) {
+            archive_entry_unset_atime(self);
+        } else {
+            lua_Number atime = lua_tonumber(L, 2);
+            archive_entry_set_atime(self, atime, atime*1e+9);
+        }
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_mtime(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    if ( ! archive_entry_mtime_is_set(self) ) {
+        lua_pushnil(L);
+    } else {
+        lua_Number mtime = archive_entry_mtime(self) +
+            archive_entry_mtime_nsec(self)/1e+9;
+        lua_pushnumber(L, mtime);
+    }
+    if ( is_set ) {
+        if ( lua_isnil(L, 2) ) {
+            archive_entry_unset_mtime(self);
+        } else {
+            lua_Number mtime = lua_tonumber(L, 2);
+            archive_entry_set_mtime(self, mtime, mtime*1e+9);
+        }
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_ctime(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    if ( ! archive_entry_ctime_is_set(self) ) {
+        lua_pushnil(L);
+    } else {
+        lua_Number ctime = archive_entry_ctime(self) +
+            archive_entry_ctime_nsec(self)/1e+9;
+        lua_pushnumber(L, ctime);
+    }
+    if ( is_set ) {
+        if ( lua_isnil(L, 2) ) {
+            archive_entry_unset_ctime(self);
+        } else {
+            lua_Number ctime = lua_tonumber(L, 2);
+            archive_entry_set_ctime(self, ctime, ctime*1e+9);
+        }
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_birthtime(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    if ( ! archive_entry_birthtime_is_set(self) ) {
+        lua_pushnil(L);
+    } else {
+        lua_Number birthtime = archive_entry_birthtime(self) +
+            archive_entry_birthtime_nsec(self)/1e+9;
+        lua_pushnumber(L, birthtime);
+    }
+    if ( is_set ) {
+        if ( lua_isnil(L, 2) ) {
+            archive_entry_unset_birthtime(self);
+        } else {
+            lua_Number birthtime = lua_tonumber(L, 2);
+            archive_entry_set_birthtime(self, birthtime, birthtime*1e+9);
+        }
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_size(lua_State *L) {
-    return 0;
-}
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
 
-//////////////////////////////////////////////////////////////////////
-static int ar_entry_link(lua_State *L) {
-    return 0;
+    int is_set = ( lua_gettop(L) == 2 );
+    if ( archive_entry_size_is_set(self) ) {
+        lua_pushnumber(L, archive_entry_size(self));
+    } else {
+        lua_pushnil(L);
+    }
+    if ( is_set ) {
+        if ( lua_isnil(L, 2) ) {
+            archive_entry_unset_size(self);
+        } else {
+            archive_entry_set_size(self, lua_tonumber(L, 2));
+        }
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_sourcepath(lua_State *L) {
-    return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
+
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushstring(L, archive_entry_sourcepath(self));
+    if ( is_set ) {
+        archive_entry_copy_sourcepath(self, lua_tostring(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_symlink(lua_State *L) {
-    return 0;
-}
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
 
-//////////////////////////////////////////////////////////////////////
-static int ar_entry_filetype(lua_State *L) {
-    return 0;
+    int is_set = ( lua_gettop(L) == 2 );
+    lua_pushstring(L, archive_entry_symlink(self));
+    if ( is_set ) {
+        archive_entry_copy_symlink(self, lua_tostring(L, 2));
+    }
+    lua_settop(L, -1);
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_hardlink(lua_State *L) {
-    struct archive_entry** self = ar_entry_check(L, 1);
-    if ( NULL == *self ) return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
 
     int is_set = ( lua_gettop(L) == 2 );
-    lua_pushstring(L, archive_entry_hardlink(*self));
+    lua_pushstring(L, archive_entry_hardlink(self));
     if ( is_set ) {
-        archive_entry_set_hardlink(*self, lua_tostring(L, 2));
+        archive_entry_copy_hardlink(self, lua_tostring(L, 2));
     }
     lua_settop(L, -1);
     return 1;
@@ -160,13 +386,13 @@ static int ar_entry_hardlink(lua_State *L) {
 
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_pathname(lua_State *L) {
-    struct archive_entry** self = ar_entry_check(L, 1);
-    if ( NULL == *self ) return 0;
+    struct archive_entry* self = *ar_entry_check(L, 1);
+    if ( NULL == self ) return 0;
 
     int is_set = ( lua_gettop(L) == 2 );
-    lua_pushstring(L, archive_entry_pathname(*self));
+    lua_pushstring(L, archive_entry_pathname(self));
     if ( is_set ) {
-        archive_entry_set_pathname(*self, lua_tostring(L, 2));
+        archive_entry_copy_pathname(self, lua_tostring(L, 2));
     }
     lua_settop(L, -1);
     return 1;
@@ -204,10 +430,8 @@ int lua_archive_entry(lua_State *L) {
         { "ctime", ar_entry_ctime },
         { "birthtime", ar_entry_birthtime },
         { "size", ar_entry_size },
-        { "link", ar_entry_link },
         { "sourcepath", ar_entry_sourcepath },
         { "symlink", ar_entry_symlink },
-        { "filetype", ar_entry_filetype },
         { "hardlink", ar_entry_hardlink },
         { "pathname", ar_entry_pathname },
         { "__gc",    ar_entry_destroy },

@@ -3,6 +3,7 @@
 //////////////////////////////////////////////////////////////////////
 
 #include <archive.h>
+#include <archive_entry.h>
 #include <ctype.h>
 #include <lauxlib.h>
 #include <lua.h>
@@ -100,44 +101,46 @@ static int ar_write(lua_State *L) {
     lua_pop(L, 1);
 
     lua_getfield(L, 1, "format");
-    if ( ! lua_isnil(L, -1) ) {
-        static struct {
-            const char *name;
-            int (*setter)(struct archive *);
-        } names[] = {
-            /* Copied from archive_write_set_format_by_name.c */
-            { "ar",         archive_write_set_format_ar_bsd },
-            { "arbsd",      archive_write_set_format_ar_bsd },
-            { "argnu",      archive_write_set_format_ar_svr4 },
-            { "arsvr4",     archive_write_set_format_ar_svr4 },
-            { "cpio",       archive_write_set_format_cpio },
-            { "mtree",      archive_write_set_format_mtree },
-            { "newc",       archive_write_set_format_cpio_newc },
-            { "odc",        archive_write_set_format_cpio },
-            { "pax",        archive_write_set_format_pax },
-            { "posix",      archive_write_set_format_pax },
-            { "shar",       archive_write_set_format_shar },
-            { "shardump",   archive_write_set_format_shar_dump },
-            { "ustar",      archive_write_set_format_ustar },
-            /* New ones to more closely match the C API */
-            { "ar_bsd",     archive_write_set_format_ar_bsd },
-            { "ar_svr4",    archive_write_set_format_ar_svr4 },
-            { "cpio_newc",  archive_write_set_format_cpio_newc },
-            { "pax_restricted", archive_write_set_format_pax_restricted },
-            { "shar_dump",  archive_write_set_format_shar_dump },
-            { NULL,         NULL }
-        };
-        int idx = 0;
-        const char* name = lua_tostring(L, -1);
-        for ( ;; idx++ ) {
-            if ( names[idx].name == NULL ) {
-                err("archive_write_set_format_*: No such format '%s'", name);
-            }
-            if ( strcmp(name, names[idx].name) == 0 ) break;
+    if ( lua_isnil(L, -1) ) {
+        lua_pop(L, 1);
+        lua_pushliteral(L, "posix");
+    }
+    static struct {
+        const char *name;
+        int (*setter)(struct archive *);
+    } names[] = {
+        /* Copied from archive_write_set_format_by_name.c */
+        { "ar",         archive_write_set_format_ar_bsd },
+        { "arbsd",      archive_write_set_format_ar_bsd },
+        { "argnu",      archive_write_set_format_ar_svr4 },
+        { "arsvr4",     archive_write_set_format_ar_svr4 },
+        { "cpio",       archive_write_set_format_cpio },
+        { "mtree",      archive_write_set_format_mtree },
+        { "newc",       archive_write_set_format_cpio_newc },
+        { "odc",        archive_write_set_format_cpio },
+        { "pax",        archive_write_set_format_pax },
+        { "posix",      archive_write_set_format_pax },
+        { "shar",       archive_write_set_format_shar },
+        { "shardump",   archive_write_set_format_shar_dump },
+        { "ustar",      archive_write_set_format_ustar },
+        /* New ones to more closely match the C API */
+        { "ar_bsd",     archive_write_set_format_ar_bsd },
+        { "ar_svr4",    archive_write_set_format_ar_svr4 },
+        { "cpio_newc",  archive_write_set_format_cpio_newc },
+        { "pax_restricted", archive_write_set_format_pax_restricted },
+        { "shar_dump",  archive_write_set_format_shar_dump },
+        { NULL,         NULL }
+    };
+    int idx = 0;
+    const char* name = lua_tostring(L, -1);
+    for ( ;; idx++ ) {
+        if ( names[idx].name == NULL ) {
+            err("archive_write_set_format_*: No such format '%s'", name);
         }
-        if ( ARCHIVE_OK != (names[idx].setter)(*self_ref) ) {
-            err("archive_write_set_format_*: %s", archive_error_string(*self_ref));
-        }
+        if ( strcmp(name, names[idx].name) == 0 ) break;
+    }
+    if ( ARCHIVE_OK != (names[idx].setter)(*self_ref) ) {
+        err("archive_write_set_format_*: %s", archive_error_string(*self_ref));
     }
     lua_pop(L, 1);
 
@@ -181,7 +184,9 @@ static int ar_write(lua_State *L) {
         err("archive_write_open: %s", archive_error_string(*self_ref));
     }
 
-    return 0;
+    lua_settop(L, -1);
+
+    return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -197,9 +202,13 @@ static void ar_write_get_printer(lua_State *L, int self_idx) {
 
 //////////////////////////////////////////////////////////////////////
 static int ar_write_destroy(lua_State *L) {
-    fprintf(stderr, "ar_write_destroy\n");
     struct archive** self_ref = ar_write_check(L, 1);
     if ( NULL == *self_ref ) return 0;
+
+    // If called in destructor, we were already removed from the weak
+    // table, so we need to re-register so that the write callback
+    // will work.
+    lua_archive_register(L, *self_ref);
 
     if ( ARCHIVE_OK != archive_write_close(*self_ref) ) {
         lua_pushfstring(L, "archive_write_close: %s", archive_error_string(*self_ref));
@@ -259,6 +268,12 @@ static int ar_write_header(lua_State *L) {
 
     struct archive_entry* entry = *ar_entry_check(L, 2);
     if ( NULL == entry ) err("NULL archive{entry}!");
+
+    // Give a nicer error message:
+    const char* pathname = archive_entry_pathname(entry);
+    if ( NULL == pathname || '\0' == *pathname ) {
+        err("InvalidEntry: 'pathname' field must be set");
+    }
 
     if ( ARCHIVE_OK != archive_write_header(self, entry) ) {
         err("archive_write_header: %s", archive_error_string(self));

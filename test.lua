@@ -80,7 +80,7 @@ function test_basic()
       mtime=1257051678.0001,
       ctime=1257051677.0001,
       birthtime=1257051676.0001,
-      size=100,
+      size=9,
       sourcepath="source/test.txt",
       pathname="test.txt",
    }
@@ -116,14 +116,8 @@ function test_basic()
    end
 
    ar = archive.read { reader = reader }
-
-   local entry = ar:next_header()
-   for key, value in pairs(normal_entry) do
-      local got = entry[key](entry)
-      ok(got == value, "checking " .. key ..
-         " expect=" .. tostring(value) ..
-         " got=" .. tostring(got))
-   end
+   local header = ar:next_header()
+   ok(header:pathname() == this_file, "this file name matches")
 
    local fh = assert(io.open(this_file, "rb"))
    local this_file_content = fh:read("*a")
@@ -138,9 +132,14 @@ function test_basic()
    ar_file_content = table.concat(ar_file_content)
    ok(ar_file_content == this_file_content, "this file matches archived file")
 
-   for header in ar:headers() do
-      print("pathame=[" ..header:pathname() .. "]")
-   end
+   header_is(ar:next_header(), normal_entry)
+   ok(ar:data() == "Test data", "gen content matches")
+   ok(ar:data() == nil, "no more content")
+   header_is(ar:next_header(), symlink_entry)
+   ok(ar:data() == nil, "no content")
+   header_is(ar:next_header(), hardlink_entry)
+   ok(ar:data() == nil, "no content")
+
    ar:close()
    tmpfh:close()
 
@@ -153,5 +152,13 @@ function test_basic()
 
 end
 
+function header_is(got_header, expected_header)
+   for key, value in pairs(expected_header) do
+      local got = got_header[key](got_header)
+      ok(got == value, "checking " .. key ..
+         " expect=" .. tostring(value) ..
+         " got=" .. tostring(got))
+   end
+end
 
 main()

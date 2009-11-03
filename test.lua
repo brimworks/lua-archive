@@ -6,14 +6,34 @@ local ok      = tap.ok
 local io      = require("io")
 
 function main()
+   test_missing_reader()
+   test_missing_writer()
    test_basic()
+end
+
+function test_missing_writer()
+   local success, err = pcall(function ()
+                                 archive.write {}
+                              end)
+   ok(not success, "archive.write should fail with missing argument")
+   ok(string.match(err, "^.*MissingArgument"),
+      "got MissingArgument error (" .. err .. ")")
+end
+
+function test_missing_reader()
+   local success, err = pcall(function ()
+                                 archive.read {}
+                              end)
+   ok(not success, "archive.read should fail with missing argument")
+   ok(string.match(err, "^.*MissingArgument"),
+      "got MissingArgument error (" .. err .. ")")
 end
 
 function test_basic()
    local this_file = string.sub(debug.getinfo(1,'S').source, 2)
 
-   local tmpfh = io.tmpfile() --open("/tmp/test.tar", "wb")
-   local function printer(ar, str)
+   local tmpfh = assert(io.open("/tmp/test.tar", "w+b"))
+   local function writer(ar, str)
       if ( nil == str ) then
          tmpfh:flush()
       else
@@ -21,8 +41,9 @@ function test_basic()
          return #str
       end
    end
-   local ar = archive.write { printer = printer }
-   local fh = io.open(this_file, "rb")
+
+   local ar = archive.write { writer = writer }
+   local fh = assert(io.open(this_file, "rb"))
 
    -- Test passing in a file name:
    ar:header(archive.entry(this_file))
@@ -33,12 +54,12 @@ function test_basic()
    end
    fh:close()
 
-   -- Test creating our own entry:
-   local test_entry = {
+   -- Test creating our own "normal" entry:
+   local normal_entry = {
       fflags="nosappnd,dump,archive",
       dev=200,
       ino=1000,
-      mode=0xA000,
+      mode=0x80FF,
       nlink=3,
       uid=500,
       uname="u500",
@@ -51,12 +72,22 @@ function test_basic()
       birthtime=1257051676.0001,
       size=100,
       sourcepath="source/test.txt",
-      symlink="test.txt.sym",
-      hardlink="test.txt.hard",
       pathname="test.txt",
    }
-   ar:header(archive.entry(test_entry))
+   ar:header(archive.entry(normal_entry))
    ar:data("Test data")
+
+   local symlink_entry = {
+      symlink="test.txt",
+      pathname="test.txt.sym",
+   }
+   ar:header(archive.entry(symlink_entry))
+
+   local hardlink_entry = {
+      hardlink="test.txt",
+      pathname="test.txt.hard",
+   }
+   ar:header(archive.entry(hardlink_entry))
 
    ar:close()
 
@@ -69,7 +100,11 @@ function test_basic()
    tmpfh:seek("set")
 
 -- TODO: Validate by reading the archive:
---   archive.read()
+   local function reader(ar)
+      
+   end
+
+   archive.read { reader = reader }
 
 end
 

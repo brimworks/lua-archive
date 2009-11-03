@@ -18,12 +18,11 @@ static int __ref_count = 0;
 // For debugging GC issues.
 static int ar_ref_count(lua_State *L) {
     lua_pushnumber(L, __ref_count);
-    lua_settop(L, -1);
     return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
-static int ar_entry(lua_State *L) {
+int ar_entry(lua_State *L) {
     struct archive_entry** self_ref = (struct archive_entry**)
         lua_newuserdata(L, sizeof(struct archive_entry*)); // ..., {ud}
     *self_ref = NULL;
@@ -62,7 +61,6 @@ static int ar_entry(lua_State *L) {
         archive_entry_copy_stat(*self_ref, &sb);
         archive_entry_set_pathname(*self_ref, lua_tostring(L, 1));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -85,12 +83,11 @@ static int ar_entry_fflags(lua_State *L) {
     int is_set = ( lua_gettop(L) == 2 );
     lua_pushstring(L, archive_entry_fflags_text(self));
     if ( is_set ) {
-        char* invalid = archive_entry_copy_fflags_text(self, lua_tostring(L, 2));
+        const char* invalid = archive_entry_copy_fflags_text(self, lua_tostring(L, 2));
         if ( NULL != invalid ) {
             err("InvalidFFlag: '%s' is not a known fflag", invalid);
         }
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -104,7 +101,6 @@ static int ar_entry_dev(lua_State *L) {
     if ( is_set ) {
         archive_entry_set_dev(self, lua_tonumber(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -118,7 +114,6 @@ static int ar_entry_ino(lua_State *L) {
     if ( is_set ) {
         archive_entry_set_ino(self, lua_tonumber(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -130,9 +125,9 @@ static int ar_entry_mode(lua_State *L) {
     int is_set = ( lua_gettop(L) == 2 );
     lua_pushnumber(L, archive_entry_mode(self));
     if ( is_set ) {
-        archive_entry_set_mode(self, lua_tonumber(L, 2));
+        mode_t mode = lua_tonumber(L, 2);
+        archive_entry_set_mode(self, mode);
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -146,7 +141,6 @@ static int ar_entry_nlink(lua_State *L) {
     if ( is_set ) {
         archive_entry_set_nlink(self, lua_tonumber(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -160,7 +154,6 @@ static int ar_entry_uid(lua_State *L) {
     if ( is_set ) {
         archive_entry_set_uid(self, lua_tonumber(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -174,7 +167,6 @@ static int ar_entry_uname(lua_State *L) {
     if ( is_set ) {
         archive_entry_copy_uname(self, lua_tostring(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -188,7 +180,6 @@ static int ar_entry_gid(lua_State *L) {
     if ( is_set ) {
         archive_entry_set_gid(self, lua_tonumber(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -202,7 +193,6 @@ static int ar_entry_gname(lua_State *L) {
     if ( is_set ) {
         archive_entry_copy_gname(self, lua_tostring(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -216,7 +206,6 @@ static int ar_entry_rdev(lua_State *L) {
     if ( is_set ) {
         archive_entry_set_rdev(self, lua_tonumber(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -241,7 +230,6 @@ static int ar_entry_atime(lua_State *L) {
             archive_entry_set_atime(self, atime, atime*1e+9);
         }
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -266,7 +254,6 @@ static int ar_entry_mtime(lua_State *L) {
             archive_entry_set_mtime(self, mtime, mtime*1e+9);
         }
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -291,7 +278,6 @@ static int ar_entry_ctime(lua_State *L) {
             archive_entry_set_ctime(self, ctime, ctime*1e+9);
         }
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -316,7 +302,6 @@ static int ar_entry_birthtime(lua_State *L) {
             archive_entry_set_birthtime(self, birthtime, birthtime*1e+9);
         }
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -338,7 +323,6 @@ static int ar_entry_size(lua_State *L) {
             archive_entry_set_size(self, lua_tonumber(L, 2));
         }
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -352,7 +336,6 @@ static int ar_entry_sourcepath(lua_State *L) {
     if ( is_set ) {
         archive_entry_copy_sourcepath(self, lua_tostring(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -366,7 +349,6 @@ static int ar_entry_symlink(lua_State *L) {
     if ( is_set ) {
         archive_entry_copy_symlink(self, lua_tostring(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -380,7 +362,6 @@ static int ar_entry_hardlink(lua_State *L) {
     if ( is_set ) {
         archive_entry_copy_hardlink(self, lua_tostring(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -394,7 +375,6 @@ static int ar_entry_pathname(lua_State *L) {
     if ( is_set ) {
         archive_entry_copy_pathname(self, lua_tostring(L, 2));
     }
-    lua_settop(L, -1);
     return 1;
 }
 

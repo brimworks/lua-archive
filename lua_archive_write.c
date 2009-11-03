@@ -27,7 +27,6 @@ static int __ref_count = 0;
 // For debugging GC issues.
 static int ar_ref_count(lua_State *L) {
     lua_pushnumber(L, __ref_count);
-    lua_settop(L, -1);
     return 1;
 }
 
@@ -38,7 +37,6 @@ static int ar_write(lua_State *L) {
 
     struct archive** self_ref = (struct archive**)
         lua_newuserdata(L, sizeof(struct archive*)); // {ud}
-    *self_ref = NULL;
     luaL_getmetatable(L, AR_WRITE); // {ud}, [write]
     lua_setmetatable(L, -2); // {ud}
     __ref_count++;
@@ -47,11 +45,14 @@ static int ar_write(lua_State *L) {
     // Register it in the weak metatable:
     lua_archive_register(L, *self_ref);
 
-    // Create an environment to store a reference to the printer:
+    // Create an environment to store a reference to the writer:
     lua_createtable(L, 1, 0); // {ud}, {}
-    lua_getfield(L, 1, "printer"); // {ud}, {}, fn
-    if ( ! lua_isfunction(L, -1) ) err("required parameter 'printer' must be a function");
-    lua_setfield(L, -2, "printer");
+    lua_pushliteral(L, "writer"); // {ud}, {}, "writer"
+    lua_rawget(L, 1); // {ud}, {}, fn
+    if ( ! lua_isfunction(L, -1) ) {
+        err("MissingArgument: required parameter 'writer' must be a function");
+    }
+    lua_setfield(L, -2, "writer");
     lua_setfenv(L, -2); // {ud}
 
     // Extract various fields and prepare the archive:
@@ -140,7 +141,7 @@ static int ar_write(lua_State *L) {
         if ( strcmp(name, names[idx].name) == 0 ) break;
     }
     if ( ARCHIVE_OK != (names[idx].setter)(*self_ref) ) {
-        err("archive_write_set_format_*: %s", archive_error_string(*self_ref));
+        err("archive_write_set_format_%s: %s", name, archive_error_string(*self_ref));
     }
     lua_pop(L, 1);
 
@@ -166,7 +167,7 @@ static int ar_write(lua_State *L) {
             if ( strcmp(name, names[idx].name) == 0 ) break;
         }
         if ( ARCHIVE_OK != (names[idx].setter)(*self_ref) ) {
-            err("archive_write_set_compression_*: %s", archive_error_string(*self_ref));
+            err("archive_write_set_compression_%s: %s", name, archive_error_string(*self_ref));
         }
     }
     lua_pop(L, 1);
@@ -184,20 +185,19 @@ static int ar_write(lua_State *L) {
         err("archive_write_open: %s", archive_error_string(*self_ref));
     }
 
-    lua_settop(L, -1);
-
     return 1;
 }
 
 //////////////////////////////////////////////////////////////////////
 // Precondition: archive{write} is at the top of the stack, and idx is
-// the index to the argument for which to pass to printer exists.  If
-// idx is zero, nil is passed into printer.
-static void ar_write_get_printer(lua_State *L, int self_idx) {
+// the index to the argument for which to pass to writer exists.  If
+// idx is zero, nil is passed into writer.
+static void ar_write_get_writer(lua_State *L, int self_idx) {
     lua_getfenv(L, self_idx);        // {env}
-    lua_getfield(L, -1, "printer"); // {env}, printer
-    lua_insert(L, -2);              // printer, {env}
-    lua_pop(L, 1);                  // printer
+    lua_pushliteral(L, "writer");    // {env}, "writer"
+    lua_rawget(L, -2);               // {env}, writer
+    lua_insert(L, -2);              // writer, {env}
+    lua_pop(L, 1);                  // writer
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -218,10 +218,12 @@ static int ar_write_destroy(lua_State *L) {
         lua_error(L);
     }
 
-    ar_write_get_printer(L, 1); // {self}, printer
-    lua_pushvalue(L, 1); // {self}, printer, {self}
-    lua_pushnil(L); // {self}, printer, {self}, nil
-    lua_call(L, 2, 1); // {self}, result
+    ar_write_get_writer(L, 1); // {self}, writer
+    if ( ! lua_isnil(L, -1) ) {
+        lua_pushvalue(L, 1); // {self}, writer, {self}
+        lua_pushnil(L); // {self}, writer, {self}, nil
+        lua_call(L, 2, 1); // {self}, result
+    }
 
     if ( ARCHIVE_OK != archive_write_finish(*self_ref) ) {
         luaL_error(L, "archive_write_finish: %s", archive_error_string(*self_ref));
@@ -246,9 +248,9 @@ static __LA_SSIZE_T ar_write_cb(struct archive * self,
         return -1;
     }
 
-    ar_write_get_printer(L, -1); // {ud}, printer
-    lua_pushvalue(L, -2); // {ud}, printer, {ud}
-    lua_pushlstring(L, (const char *)buff, len); // {ud}, printer, {ud}, str
+    ar_write_get_writer(L, -1); // {ud}, writer
+    lua_pushvalue(L, -2); // {ud}, writer, {ud}
+    lua_pushlstring(L, (const char *)buff, len); // {ud}, writer, {ud}, str
 
     if ( 0 != lua_pcall(L, 2, 1, 0) ) { // {ud}, "err"
         archive_set_error(self, 0, "%s", lua_tostring(L, -1));

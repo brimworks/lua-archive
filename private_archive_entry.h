@@ -6,3 +6,4 @@
     ((struct archive_entry**)luaL_checkudata((L), (narg), AR_ENTRY))
 
 int lua_archive_entry(lua_State *L);
+int ar_entry(lua_State *L);

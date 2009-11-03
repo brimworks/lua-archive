@@ -32,23 +32,33 @@ end
 function test_basic()
    local this_file = string.sub(debug.getinfo(1,'S').source, 2)
 
-   local tmpfh = assert(io.open("/tmp/test.tar", "w+b"))
+   local bytes_written = 0
+   local tmpfh = io.tmpfile()--assert(io.open("/tmp/test.tar", "w+b"))
    local function writer(ar, str)
       if ( nil == str ) then
          tmpfh:flush()
       else
          tmpfh:write(str)
+         bytes_written = bytes_written + #str
          return #str
       end
    end
 
-   local ar = archive.write { writer = writer }
+   -- make it as small as possible by reducing the bytes per block and
+   -- setting the compression level to 9.
+   local ar = archive.write {
+      writer = writer,
+      compression = "gzip",
+      bytes_in_last_block = 1,
+      bytes_per_block = 100,
+      options = "compression-level=9",
+   }
    local fh = assert(io.open(this_file, "rb"))
 
    -- Test passing in a file name:
    ar:header(archive.entry(this_file))
    while ( true ) do
-      local buff = fh:read(10000)
+      local buff = fh:read(10) -- Test doing a lot of reads.
       if ( nil == buff ) then break end
       ar:data(buff)
    end
@@ -91,20 +101,55 @@ function test_basic()
 
    ar:close()
 
+   print("bytes_written=" .. bytes_written)
+
    collectgarbage("collect")
    ok(archive._write_ref_count() == 0,
-      "ref_count=" .. tostring(archive._write_ref_count()) .. " gc works")
+      "write_ref_count=" .. tostring(archive._write_ref_count()) .. " gc works")
    ok(archive._entry_ref_count() == 0,
-      "ref_count=" .. tostring(archive._entry_ref_count()) .. " gc works")
+      "entry_ref_count=" .. tostring(archive._entry_ref_count()) .. " gc works")
 
    tmpfh:seek("set")
 
--- TODO: Validate by reading the archive:
    local function reader(ar)
-      
+      return tmpfh:read(3)
    end
 
-   archive.read { reader = reader }
+   ar = archive.read { reader = reader }
+
+   local entry = ar:next_header()
+   for key, value in pairs(normal_entry) do
+      local got = entry[key](entry)
+      ok(got == value, "checking " .. key ..
+         " expect=" .. tostring(value) ..
+         " got=" .. tostring(got))
+   end
+
+   local fh = assert(io.open(this_file, "rb"))
+   local this_file_content = fh:read("*a")
+   fh:close()
+
+   local ar_file_content = {}
+   while true do
+      local data = ar:data()
+      if nil == data then break end
+      ar_file_content[#ar_file_content + 1] = data
+   end
+   ar_file_content = table.concat(ar_file_content)
+   ok(ar_file_content == this_file_content, "this file matches archived file")
+
+   for header in ar:headers() do
+      print("pathame=[" ..header:pathname() .. "]")
+   end
+   ar:close()
+   tmpfh:close()
+
+   collectgarbage("collect")
+   collectgarbage("collect")
+   ok(archive._read_ref_count() == 0,
+      "read_ref_count=" .. tostring(archive._read_ref_count()) .. " gc works")
+   ok(archive._entry_ref_count() == 0,
+      "entry_ref_count=" .. tostring(archive._entry_ref_count()) .. " gc works")
 
 end
 

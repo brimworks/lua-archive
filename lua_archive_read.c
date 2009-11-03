@@ -260,20 +260,8 @@ static int ar_read_next_header(lua_State *L) {
     struct archive* self = *ar_read_check(L, 1); // {ud}
     if ( NULL == self ) err("NULL archive{read}!");
 
-    lua_getfenv(L, 1); // {ud}, {fenv}
-    lua_pushliteral(L, "current_header"); // {ud}, {fenv}, "current_header"
-    lua_rawget(L, -2); // {ud}, {fenv}, header
-    if ( lua_isnil(L, -1) ) {
-        // Create the header for reuse:
-        lua_pop(L, 1); // {ud}, {fenv}
-        lua_pushcfunction(L, ar_entry); // {ud}, {fenv}, ar_entry
-        lua_call(L, 0, 1); // {ud}, {fenv}, header
-        lua_pushliteral(L, "current_header"); // {ud}, {fenv}, header, "current_header"
-        lua_pushvalue(L, -2); // {ud}, {fenv}, header, "current_header", header
-        lua_rawset(L, -4);
-    }
-    lua_insert(L, -2); // {ud}, header, {fenv}
-    lua_pop(L, 1);     // {ud}, header
+    lua_pushcfunction(L, ar_entry); // {ud}, ar_entry
+    lua_call(L, 0, 1); // {ud}, header
 
     struct archive_entry* entry = *ar_entry_check(L, -1);
     int result = archive_read_next_header2(self, entry);

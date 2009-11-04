@@ -1,5 +1,5 @@
 #define AR_REGISTRY  "archive{registry}"
 
-void lua_archive_registry(lua_State *L);
-void lua_archive_register(lua_State *L, void *ptr);
-int lua_archive_get(lua_State *L, void *ptr);
+void ar_registry_init(lua_State *L);
+void ar_registry_set(lua_State *L, void *ptr);
+int ar_registry_get(lua_State *L, void *ptr);

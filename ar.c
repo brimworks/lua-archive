@@ -47,10 +47,10 @@ LUALIB_API int luaopen_archive(lua_State *L) {
     };
     luaL_register(L, NULL, fns);
 
-    lua_archive_registry(L);
-    lua_archive_read(L);
-    lua_archive_write(L);
-    lua_archive_entry(L);
+    ar_registry_init(L);
+    ar_read_init(L);
+    ar_write_init(L);
+    ar_entry_init(L);
 
     return 1;
 }

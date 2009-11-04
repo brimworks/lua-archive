@@ -17,7 +17,7 @@
 // Postcondition: ptr is the light user data key into the registry
 // that points to the full user data.
 //////////////////////////////////////////////////////////////////////
-void lua_archive_register(lua_State *L, void *ptr) {
+void ar_registry_set(lua_State *L, void *ptr) {
     luaL_checktype(L, -1, LUA_TUSERDATA); // {ud}
     luaL_getmetatable(L, AR_REGISTRY); // {ud}, {registry}
     lua_pushlightuserdata(L, ptr); // {ud}, {registry}, <ptr>
@@ -27,7 +27,7 @@ void lua_archive_register(lua_State *L, void *ptr) {
 }
 
 // Returns true if value was pushed on the stack.
-int lua_archive_get(lua_State *L, void *ptr) {
+int ar_registry_get(lua_State *L, void *ptr) {
     luaL_getmetatable(L, AR_REGISTRY); // {registry}
     lua_pushlightuserdata(L, ptr); // {registry}, <ptr>
     lua_rawget(L, -2); // {registry}, {ud}
@@ -40,7 +40,7 @@ int lua_archive_get(lua_State *L, void *ptr) {
     return 1;
 }
 
-void lua_archive_registry(lua_State *L) {
+void ar_registry_init(lua_State *L) {
     luaL_newmetatable(L, AR_REGISTRY); // {class}, {meta}
     
     lua_pushvalue(L, -1); // {class}, {meta}, {meta}

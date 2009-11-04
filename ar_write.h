@@ -5,4 +5,4 @@
 #define ar_write_check(L, narg) \
     ((struct archive**)luaL_checkudata((L), (narg), AR_WRITE))
 
-int lua_archive_write(lua_State *L);
+int ar_write_init(lua_State *L);

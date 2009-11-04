@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 
 #include "ar_entry.h"
-#include "ar_registry.h"
 
 #define err(...) (luaL_error(L, __VA_ARGS__))
 
@@ -30,9 +29,6 @@ int ar_entry(lua_State *L) {
     lua_setmetatable(L, -2); // ..., {ud}
     __ref_count++;
     *self_ref = archive_entry_new();
-
-    // Register it in the weak metatable:
-    lua_archive_register(L, *self_ref);
 
     if ( lua_istable(L, 1) ) {
         assert(0 != lua_getmetatable(L, -1)); // ..., {ud}, {meta}
@@ -379,7 +375,7 @@ static int ar_entry_pathname(lua_State *L) {
 }
 
 //////////////////////////////////////////////////////////////////////
-int lua_archive_entry(lua_State *L) {
+int ar_entry_init(lua_State *L) {
     luaL_checktype(L, LUA_TTABLE, -1); // {class}
     static luaL_reg fns[] = {
         { "entry",  ar_entry },

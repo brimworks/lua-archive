@@ -43,7 +43,7 @@ static int ar_write(lua_State *L) {
     *self_ref = archive_write_new();
 
     // Register it in the weak metatable:
-    lua_archive_register(L, *self_ref);
+    ar_registry_set(L, *self_ref);
 
     // Create an environment to store a reference to the writer:
     lua_createtable(L, 1, 0); // {ud}, {}
@@ -208,7 +208,7 @@ static int ar_write_destroy(lua_State *L) {
     // If called in destructor, we were already removed from the weak
     // table, so we need to re-register so that the write callback
     // will work.
-    lua_archive_register(L, *self_ref);
+    ar_registry_set(L, *self_ref);
 
     if ( ARCHIVE_OK != archive_write_close(*self_ref) ) {
         lua_pushfstring(L, "archive_write_close: %s", archive_error_string(*self_ref));
@@ -242,7 +242,7 @@ static __LA_SSIZE_T ar_write_cb(struct archive * self,
     lua_State* L = (lua_State*)opaque;
 
     // We are missing!?
-    if ( ! lua_archive_get(L, self) ) {
+    if ( ! ar_registry_get(L, self) ) {
         archive_set_error(self, 0,
                           "InternalError: write callback called on archive that should already have been garbage collected!");
         return -1;
@@ -307,7 +307,7 @@ static int ar_write_data(lua_State *L) {
 // Postcondition: 'write' method is registered in the table at the top
 // of the stack, and the archive{write} metatable is registered.
 //////////////////////////////////////////////////////////////////////
-int lua_archive_write(lua_State *L) {
+int ar_write_init(lua_State *L) {
     luaL_checktype(L, LUA_TTABLE, -1); // {class}
 
     static luaL_reg fns[] = {

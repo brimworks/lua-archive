@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "private_archive_read.h"
-#include "private_archive_entry.h"
-#include "private_archive_registry.h"
+#include "ar_read.h"
+#include "ar_entry.h"
+#include "ar_registry.h"
 
 #define err(...) (luaL_error(L, __VA_ARGS__))
 #define rel_idx(relative, idx) ((idx) < 0 ? (idx) + (relative) : (idx))

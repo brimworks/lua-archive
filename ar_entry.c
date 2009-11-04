@@ -7,8 +7,8 @@
 #include <assert.h>
 #include <sys/stat.h>
 
-#include "private_archive_entry.h"
-#include "private_archive_registry.h"
+#include "ar_entry.h"
+#include "ar_registry.h"
 
 #define err(...) (luaL_error(L, __VA_ARGS__))
 

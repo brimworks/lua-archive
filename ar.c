@@ -6,10 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "private_archive_registry.h"
-#include "private_archive_read.h"
-#include "private_archive_write.h"
-#include "private_archive_entry.h"
+#include "ar_registry.h"
+#include "ar_read.h"
+#include "ar_write.h"
+#include "ar_entry.h"
 
 //////////////////////////////////////////////////////////////////////
 static int ar_version(lua_State *L) {

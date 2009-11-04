@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "private_archive_registry.h"
+#include "ar_registry.h"
 
 //////////////////////////////////////////////////////////////////////
 // Precondition: User-data is at the top of the stack.

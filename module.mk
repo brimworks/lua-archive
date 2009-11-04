@@ -6,11 +6,11 @@ include $(make-common.dir)/layout.mk
 
 _lib  := $(lua.c.lib.dir)/archive.so
 _objs := $(call cc.c.to.o,$(addprefix $(_pwd)/, \
-    lua_archive.c \
-    lua_archive_write.c \
-    lua_archive_registry.c \
-    lua_archive_read.c \
-    lua_archive_entry.c \
+    ar.c \
+    ar_write.c \
+    ar_registry.c \
+    ar_read.c \
+    ar_entry.c \
 ))
 
 all: | $(_lib)
@@ -19,14 +19,14 @@ $(_lib): cc.objs := $(_objs)
 $(_lib): $(_objs)
 	$(cc.so.rule)
 
-# How to run lua_archive tests:
-.PHONY: lua_archive.test
-test: | lua_archive.test
+# How to run ar tests:
+.PHONY: ar.test
+test: | ar.test
 
 lua ?= lua
-lua_archive.test: | $(lua.c.lib.dir)/archive.so
-lua_archive.test: lua.path += $(_pwd)
-lua_archive.test: $(wildcard $(_pwd)/test*)
+ar.test: | $(lua.c.lib.dir)/archive.so
+ar.test: lua.path += $(_pwd)
+ar.test: $(wildcard $(_pwd)/test*)
 	@mkdir -p $(tmp.dir)
 	cd $(tmp.dir); for t in $<; do \
 		echo "TESTING: $$t"; \

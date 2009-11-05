@@ -31,10 +31,19 @@ int ar_entry(lua_State *L) {
     *self_ref = archive_entry_new();
 
     if ( lua_istable(L, 1) ) {
+        // If given a sourcepath, copy stat buffer from there:
+        lua_pushliteral(L, "sourcepath"); // ..., {ud}, "sourcepath"
+        lua_rawget(L, 1); // ..., {ud}, src
+        if ( lua_isstring(L, -1) ) {
+            struct stat sb;
+            lstat(lua_tostring(L, -1), &sb);
+            archive_entry_copy_stat(*self_ref, &sb);
+        } else {
+            // Give a reasonable default mode:
+            archive_entry_set_mode(*self_ref, S_IFREG);
+        }
+        lua_pop(L, 1); // ... {ud}
         assert(0 != lua_getmetatable(L, -1)); // ..., {ud}, {meta}
-
-        // Give a reasonable default mode:
-        archive_entry_set_mode(*self_ref, S_IFREG);
 
         // Iterate over the table and call the method with that name
         lua_pushnil(L); // ..., {ud}, {meta}, nil
@@ -50,12 +59,6 @@ int ar_entry(lua_State *L) {
             lua_pop(L, 1);     // ..., {ud}, {meta}, key
         } // ..., {ud}, {meta}
         lua_pop(L, 1);
-    } else if ( lua_isstring(L, 1) ) {
-        // Create entry from file path.
-        struct stat sb;
-        stat(lua_tostring(L, 1), &sb);
-        archive_entry_copy_stat(*self_ref, &sb);
-        archive_entry_set_pathname(*self_ref, lua_tostring(L, 1));
     }
     return 1;
 }

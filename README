@@ -44,7 +44,7 @@ Loading the library:
 
 major, minor, patch = archive.version()
 
-    returns numeric major, minor, and patch versions from the dynamic
+    returns numeric major, minor, and patch versions from the archive
     library.
 
 write = archive.write {
@@ -53,19 +53,31 @@ write = archive.write {
     options         = "compression-level=9,sha1",
     block_size      = 10240,
     last_block_size = 1,
-    printer         = function(string) print(string) end,
+    writer          = function(archive_write, string)
+        if ( nil == string ) then
+           fh:close()
+        else
+           fh:write(string)
+           return #string
+        end
+    end,
 }
 
-    Generate an archive.  All parameters are optional.  The printer
-    will be called with nil when EOF is reached, otherwise all output
-    is written to the printer.
+    Generate an archive.  All parameters are optional except for the
+    writer parameter.  The writer is called with nil when EOF is
+    reached, otherwise it is called with a string to be written, and
+    it is currently a requirement to return the number of bytes
+    written (libarchive has this API, so I preserved it).  The
+    archive_write is the instance of the "archive{write}" object
+    requesting to write data.
 
-    Returns a "write" object with these functions that are used to
+    Returns an "archive{write}" object with these functions that are used to
     create your archive:
 
-    write:header(archive.entry)
+    write:header(archive_entry)
 
-        Append a new file entry to the archive.
+        Append a new file entry to the archive.  archive_entry must be
+        an "archive{entry}" object (see  below for how to create one).
 
     write:data(string)
 
@@ -74,46 +86,166 @@ write = archive.write {
     write:close()
 
        Be sure to clean-up the resources and close the underlying file
-       handle.
+       handle.  Due to the nature of the underlying implementation, it
+       will take two rounds of GC to autmoatically collect an object
+       that was not closed.
 
 read = archive.read {
-    -- TODO: Various options...
-    events = {
-        header = function(events, archive.entry),
-        data   = function(events, string_data),
-        close  = function(events), -- Called on EOF.
-    }
+    reader = function(archive_read)
+        return fh:read(10000)
+    end,
+    -- TODO: document other options.
 }
 
-    Returns an archive read function, that should be repeated be
-    called with the contents of the archive.  When EOF is found, this
-    function must be called with nil.
+    Reads an archive.  All parameters are optional except for the
+    reader function that returns nil on EOF, otherwise it returns the
+    bytes read from the archive file.  The archive_read parameter is
+    the instance of the "archive{read}" object that is requesting to
+    read some bytes.
 
-    The event functions are called appropriately, note that
-    archive.entry objects are defined below.
+    Returns an "archive{read}" object with these functions used to
+    read the archive:
 
-    read(string)
+    archive_header = read:next_header()
 
-        Call it with the archive data to be parsed.
+        Reads the next header entry from the archive, or nil if there
+        are no more files in the archive.
 
+    string = read:data()
 
-entry = archive.entry("file.txt")
-    or
+        Reads a buffer of data from the file for which we just got the
+        header for (must call next_header() at least once before
+        calling this).  Returns nil if there is no more data to read
+        from this file entry (but there may still be more file
+        entries!).
+
+    read:close()
+
+       Be sure to clean-up the resources and close the underlying file
+       handle.  Due to the nature of the underlying implementation, it
+       will take two rounds of GC to autmoatically collect an object
+       that was not closed.
+
 entry = archive.entry {
-    path  = ...,
-    inode = ...,
-    dev   = ...,
-    ...
+    sourcepath = <string>,
+    pathname = <string>,
+    mode = <number>,
+    dev = <number>,
+    ino = <number>,
+    nlink = <number>,
+    uid = <number>,
+    uname = <string>,
+    gid = <number>,
+    gname = <string>,
+    atime = { <number>, <number> },
+    mtime = { <number>, <number> },
+    ctime = { <number>, <number> },
+    birthtime = { <number>, <number> },
+    size = <number>,
+    fflags = <string>,
 }
 
-    Create a new archive entry from a file name, set of file
-    attributes created by lfs.attributes(), or a set of manually set
-    attributes.
+    Create a new archive entry.  If passed in a sourcepath, then all
+    relevant fields will be initialized with the results of lstat().
+    Each field is then iterated over, calling the appropriate set
+    method mentioned below.
 
-tbl = entry.as_table()
- 
-    Returns the entry as a table using the same field names as the
-    table based constructor.
+    Returns an "archive{entry}" object with the following methods:
+
+    path = entry:sourcepath()
+    entry:sourcepath(path)
+
+        Get/set the 'sourcepath', note that this field is not saved to
+        the archive and is not even used by libarchive, but exists as
+        a convenience.  Also note that the special logic of
+        initializing from the resuls of lstat() only applies to the
+        constructor and does not apply to the setter here.
+
+    path = entry:pathname()
+    entry:pathname(path)
+
+         Get/set the 'pathname'.  You pretty much always want this to
+         be a relative path... otherwise people get mad.
+
+    number = entry:mode()
+    entry:mode(number)
+
+         Get/set the 'mode' as a raw number.  A certain part of this
+         field is the file type and another part is the permissions.
+         TODO: provide better support for manipulating the mode?
+
+    number = entry:dev()
+    number = entry:rdev()
+    entry:dev(number)
+    entry:rdev(number)
+
+        Get/set the 'dev' or 'rdev' field (so far, I've not seen
+        'rdev' field be preserved... so I'm not sure exactly what it
+        does).
+
+    number = entry:ino()
+    entry:ino(number)
+
+        Get/set the 'ino' field.  This is used to uniquely identify a
+        file on a given device (if ino + dev is the same, they must be
+        the same file).
+
+    number = entry:nlink()
+    entry:nlink(number)
+
+        Get/set the number of hardlinks.
+
+    number = entry:uid()
+    entry:uid(number)
+
+        Get/set the user identifier that owns this file.
+
+    string = entry:uname()
+    entry:uname(string)
+
+        Get/set the user name that owns this file.  Note that it is a
+        good idea to resolve the uid to a uname when archiving in case
+        the system on which you read the archive does not have a
+        matching uid.  This resolution is not autmoatically done with
+        the sourcepath constructor field, but this might be done
+        automatically in the future?
+
+    number = entry:gid()
+    entry:gid(number)
+
+        Get/set the group identifier that owns this file.
+
+    string = entry:gname()
+    entry:gname(string)
+
+        Get/set the group name that owns this file.  Again, it is a
+        good idea to resolve gid to gname.
+
+    (seconds, microseconds) = entry:atime()
+    entry:atime(seconds, microseconds)
+    (seconds, microseconds) = entry:mtime()
+    entry:mtime(seconds, microseconds)
+    (seconds, microseconds) = entry:ctime()
+    entry:ctime(seconds, microseconds)
+    (seconds, microseconds) = entry:birthtime()
+    entry:birthtime(seconds, microseconds)
+
+        Get/set the "access"/"modified"/"creation"/"birth" time of the
+        file.  The microseconds field is optional and may be nil.
+
+    number = entry:size()
+    entry:size(number)
+
+        Get/set the size of the file represented by the entry.
+
+    string = entry:fflags()
+    entry:fflags(string)
+
+        Get/set the "fflags", these are special attributes of the
+        file (like archive,dump,nosappnd).
+
+######################################################################
+# TODO: disk API!  Way to easily traverse the filesystem?
 
 write = archive.write_disk {
     options = "secure-nodotdot,secure-symlinks,no-overwrite",    

@@ -57,7 +57,10 @@ function test_basic()
    local fh = assert(io.open(this_file, "rb"))
 
    -- Test passing in a file name:
-   ar:header(archive.entry(this_file))
+   ar:header(archive.entry {
+                sourcepath = this_file,
+                pathname = "test.lua",
+             })
    while ( true ) do
       local buff = fh:read(10) -- Test doing a lot of reads.
       if ( nil == buff ) then break end
@@ -87,7 +90,6 @@ function test_basic()
    ar:data("Test data")
 
    -- TODO: Create special file so we can verify rdev works?
-   -- TODO: Test sourcepath field (how is it used!?)
 
    local symlink_entry = {
       mode=0xA0FF, -- TODO: Make it so mode is set automatically?
@@ -120,8 +122,19 @@ function test_basic()
 
    ar = archive.read { reader = reader }
    local header = ar:next_header()
-   ok(header:pathname() == this_file, "this file name matches")
+   local expect_header = archive.entry { sourcepath = this_file }
+   ok(header:pathname() == "test.lua",
+      "check test.lua filename matches")
+   ok(expect_header:mode() == header:mode(),
+      string.format("check mode matches (%o=%o)",
+                    expect_header:mode(), header:mode()))
+   ok(expect_header:size() == header:size(),
+      string.format("check size matches (%d=%d)",
+                    expect_header:size(), header:size()))
+   ok(expect_header:size() ~= 0, "non-zero size")
+
    header = nil -- so we can do gc check later on.
+   expect_header = nil
 
    local fh = assert(io.open(this_file, "rb"))
    local this_file_content = fh:read("*a")

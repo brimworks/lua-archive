@@ -210,23 +210,29 @@ static int ar_entry_atime(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
-    if ( ! archive_entry_atime_is_set(self) ) {
-        lua_pushnil(L);
-    } else {
-        lua_Number atime = archive_entry_atime(self) +
-            archive_entry_atime_nsec(self)/1e+9;
-        lua_pushnumber(L, atime);
+    int is_set = ( lua_gettop(L) >= 2 );
+    int num_results = 0;
+    if ( archive_entry_atime_is_set(self) ) {
+        num_results = 2;
+        lua_pushnumber(L, archive_entry_atime(self));
+        lua_pushnumber(L, archive_entry_atime_nsec(self));
     }
     if ( is_set ) {
         if ( lua_isnil(L, 2) ) {
             archive_entry_unset_atime(self);
+        } else if ( lua_istable(L, 2) ) {
+            lua_rawgeti(L, 2, 1);
+            lua_rawgeti(L, 2, 2);
+            archive_entry_set_atime(self,
+                                    lua_tonumber(L, -2),
+                                    lua_tonumber(L, -1));
         } else {
-            lua_Number atime = lua_tonumber(L, 2);
-            archive_entry_set_atime(self, atime, atime*1e+9);
+            archive_entry_set_atime(self,
+                                    lua_tonumber(L, 2),
+                                    lua_tonumber(L, 3));
         }
     }
-    return 1;
+    return num_results;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -234,23 +240,29 @@ static int ar_entry_mtime(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
-    if ( ! archive_entry_mtime_is_set(self) ) {
-        lua_pushnil(L);
-    } else {
-        lua_Number mtime = archive_entry_mtime(self) +
-            archive_entry_mtime_nsec(self)/1e+9;
-        lua_pushnumber(L, mtime);
+    int is_set = ( lua_gettop(L) >= 2 );
+    int num_results = 0;
+    if ( archive_entry_mtime_is_set(self) ) {
+        num_results = 2;
+        lua_pushnumber(L, archive_entry_mtime(self));
+        lua_pushnumber(L, archive_entry_mtime_nsec(self));
     }
     if ( is_set ) {
         if ( lua_isnil(L, 2) ) {
             archive_entry_unset_mtime(self);
+        } else if ( lua_istable(L, 2) ) {
+            lua_rawgeti(L, 2, 1);
+            lua_rawgeti(L, 2, 2);
+            archive_entry_set_mtime(self,
+                                    lua_tonumber(L, -2),
+                                    lua_tonumber(L, -1));
         } else {
-            lua_Number mtime = lua_tonumber(L, 2);
-            archive_entry_set_mtime(self, mtime, mtime*1e+9);
+            archive_entry_set_mtime(self,
+                                    lua_tonumber(L, 2),
+                                    lua_tonumber(L, 3));
         }
     }
-    return 1;
+    return num_results;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -258,23 +270,29 @@ static int ar_entry_ctime(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
-    if ( ! archive_entry_ctime_is_set(self) ) {
-        lua_pushnil(L);
-    } else {
-        lua_Number ctime = archive_entry_ctime(self) +
-            archive_entry_ctime_nsec(self)/1e+9;
-        lua_pushnumber(L, ctime);
+    int is_set = ( lua_gettop(L) >= 2 );
+    int num_results = 0;
+    if ( archive_entry_ctime_is_set(self) ) {
+        num_results = 2;
+        lua_pushnumber(L, archive_entry_ctime(self));
+        lua_pushnumber(L, archive_entry_ctime_nsec(self));
     }
     if ( is_set ) {
         if ( lua_isnil(L, 2) ) {
             archive_entry_unset_ctime(self);
+        } else if ( lua_istable(L, 2) ) {
+            lua_rawgeti(L, 2, 1);
+            lua_rawgeti(L, 2, 2);
+            archive_entry_set_ctime(self,
+                                    lua_tonumber(L, -2),
+                                    lua_tonumber(L, -1));
         } else {
-            lua_Number ctime = lua_tonumber(L, 2);
-            archive_entry_set_ctime(self, ctime, ctime*1e+9);
+            archive_entry_set_ctime(self,
+                                    lua_tonumber(L, 2),
+                                    lua_tonumber(L, 3));
         }
     }
-    return 1;
+    return num_results;
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -282,23 +300,29 @@ static int ar_entry_birthtime(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
-    if ( ! archive_entry_birthtime_is_set(self) ) {
-        lua_pushnil(L);
-    } else {
-        lua_Number birthtime = archive_entry_birthtime(self) +
-            archive_entry_birthtime_nsec(self)/1e+9;
-        lua_pushnumber(L, birthtime);
+    int is_set = ( lua_gettop(L) >= 2 );
+    int num_results = 0;
+    if ( archive_entry_birthtime_is_set(self) ) {
+        num_results = 2;
+        lua_pushnumber(L, archive_entry_birthtime(self));
+        lua_pushnumber(L, archive_entry_birthtime_nsec(self));
     }
     if ( is_set ) {
         if ( lua_isnil(L, 2) ) {
             archive_entry_unset_birthtime(self);
+        } else if ( lua_istable(L, 2) ) {
+            lua_rawgeti(L, 2, 1);
+            lua_rawgeti(L, 2, 2);
+            archive_entry_set_birthtime(self,
+                                    lua_tonumber(L, -2),
+                                    lua_tonumber(L, -1));
         } else {
-            lua_Number birthtime = lua_tonumber(L, 2);
-            archive_entry_set_birthtime(self, birthtime, birthtime*1e+9);
+            archive_entry_set_birthtime(self,
+                                    lua_tonumber(L, 2),
+                                    lua_tonumber(L, 3));
         }
     }
-    return 1;
+    return num_results;
 }
 
 //////////////////////////////////////////////////////////////////////

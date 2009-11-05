@@ -49,6 +49,7 @@ function test_basic()
    local ar = archive.write {
       writer = writer,
       compression = "gzip",
+      format = "posix",
       bytes_in_last_block = 1,
       bytes_per_block = 100,
       options = "compression-level=9",
@@ -75,19 +76,21 @@ function test_basic()
       uname="u500",
       gid=500,
       gname="g500",
-      rdev=100,
-      atime=1257051679.0001,
-      mtime=1257051678.0001,
-      ctime=1257051677.0001,
-      birthtime=1257051676.0001,
+      atime={ 1257051679, 10 },
+      mtime={ 1257051678, 20 },
+      ctime={ 1257051677, 30 },
+      birthtime={ 1257051676, 40 },
       size=9,
-      sourcepath="source/test.txt",
       pathname="test.txt",
    }
    ar:header(archive.entry(normal_entry))
    ar:data("Test data")
 
+   -- TODO: Create special file so we can verify rdev works?
+   -- TODO: Test sourcepath field (how is it used!?)
+
    local symlink_entry = {
+      mode=0xA0FF, -- TODO: Make it so mode is set automatically?
       symlink="test.txt",
       pathname="test.txt.sym",
    }
@@ -118,6 +121,7 @@ function test_basic()
    ar = archive.read { reader = reader }
    local header = ar:next_header()
    ok(header:pathname() == this_file, "this file name matches")
+   header = nil -- so we can do gc check later on.
 
    local fh = assert(io.open(this_file, "rb"))
    local this_file_content = fh:read("*a")
@@ -144,9 +148,9 @@ function test_basic()
    tmpfh:close()
 
    collectgarbage("collect")
-   collectgarbage("collect")
    ok(archive._read_ref_count() == 0,
       "read_ref_count=" .. tostring(archive._read_ref_count()) .. " gc works")
+   collectgarbage("collect")
    ok(archive._entry_ref_count() == 0,
       "entry_ref_count=" .. tostring(archive._entry_ref_count()) .. " gc works")
 
@@ -154,10 +158,19 @@ end
 
 function header_is(got_header, expected_header)
    for key, value in pairs(expected_header) do
-      local got = got_header[key](got_header)
-      ok(got == value, "checking " .. key ..
-         " expect=" .. tostring(value) ..
+      local got = {got_header[key](got_header)}
+      if ( type(value) == "table" ) then
+         for i in ipairs(value) do
+            ok(got[i] == value[i], "checking " .. key ..
+               "[" .. i .. "] expect=" .. tostring(value[i]) ..
+            " got=" .. tostring(got[i]))
+         end
+      else
+         got = got[1]
+         ok(got == value, "checking " .. key ..
+            " expect=" .. tostring(value) ..
          " got=" .. tostring(got))
+      end
    end
 end
 

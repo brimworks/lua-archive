@@ -33,9 +33,39 @@ static int ar_ref_count(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 // Constructor:
 static int ar_write(lua_State *L) {
-    luaL_checktype(L, 1, LUA_TTABLE);
+    struct archive** self_ref;
 
-    struct archive** self_ref = (struct archive**)
+    static struct {
+        const char *name;
+        int (*setter)(struct archive *);
+    } names[] = {
+        /* Copied from archive_write_set_format_by_name.c */
+        { "ar",         archive_write_set_format_ar_bsd },
+        { "arbsd",      archive_write_set_format_ar_bsd },
+        { "argnu",      archive_write_set_format_ar_svr4 },
+        { "arsvr4",     archive_write_set_format_ar_svr4 },
+        { "cpio",       archive_write_set_format_cpio },
+        { "mtree",      archive_write_set_format_mtree },
+        { "newc",       archive_write_set_format_cpio_newc },
+        { "odc",        archive_write_set_format_cpio },
+        { "pax",        archive_write_set_format_pax },
+        { "posix",      archive_write_set_format_pax },
+        { "shar",       archive_write_set_format_shar },
+        { "shardump",   archive_write_set_format_shar_dump },
+        { "ustar",      archive_write_set_format_ustar },
+        /* New ones to more closely match the C API */
+        { "ar_bsd",     archive_write_set_format_ar_bsd },
+        { "ar_svr4",    archive_write_set_format_ar_svr4 },
+        { "cpio_newc",  archive_write_set_format_cpio_newc },
+        { "pax_restricted", archive_write_set_format_pax_restricted },
+        { "shar_dump",  archive_write_set_format_shar_dump },
+        { NULL,         NULL }
+    };
+    int idx = 0;
+    const char* name;
+
+    luaL_checktype(L, 1, LUA_TTABLE);
+    self_ref = (struct archive**)
         lua_newuserdata(L, sizeof(struct archive*)); // {ud}
     luaL_getmetatable(L, AR_WRITE); // {ud}, [write]
     lua_setmetatable(L, -2); // {ud}
@@ -106,34 +136,7 @@ static int ar_write(lua_State *L) {
         lua_pop(L, 1);
         lua_pushliteral(L, "posix");
     }
-    static struct {
-        const char *name;
-        int (*setter)(struct archive *);
-    } names[] = {
-        /* Copied from archive_write_set_format_by_name.c */
-        { "ar",         archive_write_set_format_ar_bsd },
-        { "arbsd",      archive_write_set_format_ar_bsd },
-        { "argnu",      archive_write_set_format_ar_svr4 },
-        { "arsvr4",     archive_write_set_format_ar_svr4 },
-        { "cpio",       archive_write_set_format_cpio },
-        { "mtree",      archive_write_set_format_mtree },
-        { "newc",       archive_write_set_format_cpio_newc },
-        { "odc",        archive_write_set_format_cpio },
-        { "pax",        archive_write_set_format_pax },
-        { "posix",      archive_write_set_format_pax },
-        { "shar",       archive_write_set_format_shar },
-        { "shardump",   archive_write_set_format_shar_dump },
-        { "ustar",      archive_write_set_format_ustar },
-        /* New ones to more closely match the C API */
-        { "ar_bsd",     archive_write_set_format_ar_bsd },
-        { "ar_svr4",    archive_write_set_format_ar_svr4 },
-        { "cpio_newc",  archive_write_set_format_cpio_newc },
-        { "pax_restricted", archive_write_set_format_pax_restricted },
-        { "shar_dump",  archive_write_set_format_shar_dump },
-        { NULL,         NULL }
-    };
-    int idx = 0;
-    const char* name = lua_tostring(L, -1);
+    name = lua_tostring(L, -1);
     for ( ;; idx++ ) {
         if ( names[idx].name == NULL ) {
             err("archive_write_set_format_*: No such format '%s'", name);
@@ -239,6 +242,7 @@ static __LA_SSIZE_T ar_write_cb(struct archive * self,
                                 void *opaque,
                                 const void *buff, size_t len)
 {
+    size_t result;
     lua_State* L = (lua_State*)opaque;
 
     // We are missing!?
@@ -257,7 +261,7 @@ static __LA_SSIZE_T ar_write_cb(struct archive * self,
         lua_pop(L, 2); // <nothing>
         return -1;
     }
-    size_t result = lua_tointeger(L, -1); // {ud}, result
+    result = lua_tointeger(L, -1); // {ud}, result
     lua_pop(L, 2); // <nothing>
 
     return result;
@@ -265,14 +269,17 @@ static __LA_SSIZE_T ar_write_cb(struct archive * self,
 
 //////////////////////////////////////////////////////////////////////
 static int ar_write_header(lua_State *L) {
-    struct archive* self = *ar_write_check(L, 1);
+    struct archive* self;
+    struct archive_entry* entry;
+    const char* pathname;
+    self = *ar_write_check(L, 1);
     if ( NULL == self ) err("NULL archive{write}!");
 
-    struct archive_entry* entry = *ar_entry_check(L, 2);
+    entry = *ar_entry_check(L, 2);
     if ( NULL == entry ) err("NULL archive{entry}!");
 
     // Give a nicer error message:
-    const char* pathname = archive_entry_pathname(entry);
+    pathname = archive_entry_pathname(entry);
     if ( NULL == pathname || '\0' == *pathname ) {
         err("InvalidEntry: 'pathname' field must be set");
     }
@@ -286,13 +293,17 @@ static int ar_write_header(lua_State *L) {
 
 //////////////////////////////////////////////////////////////////////
 static int ar_write_data(lua_State *L) {
-    struct archive* self = *ar_write_check(L, 1);
+    struct archive* self;
+    const char* data;
+    size_t len;
+    size_t wrote;
+
+    self = *ar_write_check(L, 1);
     if ( NULL == self ) err("NULL archive{write}!");
 
-    size_t len;
-    const char* data = lua_tolstring(L, 2, &len);
+    data = lua_tolstring(L, 2, &len);
 
-    size_t wrote = archive_write_data(self, data, len);
+    archive_write_data(self, data, len);
     if ( -1 == wrote ) {
         err("archive_write_data: %s", archive_error_string(self));
     }
@@ -308,20 +319,11 @@ static int ar_write_data(lua_State *L) {
 // of the stack, and the archive{write} metatable is registered.
 //////////////////////////////////////////////////////////////////////
 int ar_write_init(lua_State *L) {
-    luaL_checktype(L, LUA_TTABLE, -1); // {class}
-
     static luaL_reg fns[] = {
         { "write",  ar_write },
         { "_write_ref_count", ar_ref_count },
         { NULL, NULL }
     };
-    luaL_register(L, NULL, fns); // {class}
-
-    luaL_newmetatable(L, AR_WRITE); // {class}, {meta}
-
-    lua_pushvalue(L, -1); // {class}, {meta}, {meta}
-    lua_setfield(L, -2, "__index"); // {class}, {meta}
-
     static luaL_reg m_fns[] = {
         { "header",  ar_write_header },
         { "data",    ar_write_data },
@@ -329,6 +331,16 @@ int ar_write_init(lua_State *L) {
         { "__gc",    ar_write_destroy },
         { NULL, NULL }
     };
+
+    luaL_checktype(L, LUA_TTABLE, -1); // {class}
+
+    luaL_register(L, NULL, fns); // {class}
+
+    luaL_newmetatable(L, AR_WRITE); // {class}, {meta}
+
+    lua_pushvalue(L, -1); // {class}, {meta}, {meta}
+    lua_setfield(L, -2, "__index"); // {class}, {meta}
+
     luaL_register(L, NULL, m_fns); // {class}, {meta}
 
     lua_pop(L, 1); // {class}

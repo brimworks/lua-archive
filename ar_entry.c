@@ -36,7 +36,11 @@ int ar_entry(lua_State *L) {
         lua_rawget(L, 1); // ..., {ud}, src
         if ( lua_isstring(L, -1) ) {
             struct stat sb;
+#ifdef _MSC_VER
+            stat(lua_tostring(L, -1), &sb);
+#else
             lstat(lua_tostring(L, -1), &sb);
+#endif
             archive_entry_copy_stat(*self_ref, &sb);
         } else {
             // Give a reasonable default mode:
@@ -77,9 +81,10 @@ static int ar_entry_destroy(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_fflags(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushstring(L, archive_entry_fflags_text(self));
     if ( is_set ) {
         const char* invalid = archive_entry_copy_fflags_text(self, lua_tostring(L, 2));
@@ -93,9 +98,10 @@ static int ar_entry_fflags(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_dev(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushnumber(L, archive_entry_dev(self));
     if ( is_set ) {
         archive_entry_set_dev(self, lua_tonumber(L, 2));
@@ -106,9 +112,10 @@ static int ar_entry_dev(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_ino(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushnumber(L, archive_entry_ino(self));
     if ( is_set ) {
         archive_entry_set_ino(self, lua_tonumber(L, 2));
@@ -119,12 +126,13 @@ static int ar_entry_ino(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_mode(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushnumber(L, archive_entry_mode(self));
     if ( is_set ) {
-        mode_t mode = lua_tonumber(L, 2);
+        __LA_MODE_T mode = lua_tonumber(L, 2);
         archive_entry_set_mode(self, mode);
     }
     return 1;
@@ -133,9 +141,10 @@ static int ar_entry_mode(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_nlink(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushnumber(L, archive_entry_nlink(self));
     if ( is_set ) {
         archive_entry_set_nlink(self, lua_tonumber(L, 2));
@@ -146,9 +155,10 @@ static int ar_entry_nlink(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_uid(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushnumber(L, archive_entry_uid(self));
     if ( is_set ) {
         archive_entry_set_uid(self, lua_tonumber(L, 2));
@@ -159,9 +169,10 @@ static int ar_entry_uid(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_uname(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushstring(L, archive_entry_uname(self));
     if ( is_set ) {
         archive_entry_copy_uname(self, lua_tostring(L, 2));
@@ -172,9 +183,10 @@ static int ar_entry_uname(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_gid(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushnumber(L, archive_entry_gid(self));
     if ( is_set ) {
         archive_entry_set_gid(self, lua_tonumber(L, 2));
@@ -185,9 +197,10 @@ static int ar_entry_gid(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_gname(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushstring(L, archive_entry_gname(self));
     if ( is_set ) {
         archive_entry_copy_gname(self, lua_tostring(L, 2));
@@ -198,9 +211,10 @@ static int ar_entry_gname(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_rdev(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushnumber(L, archive_entry_rdev(self));
     if ( is_set ) {
         archive_entry_set_rdev(self, lua_tonumber(L, 2));
@@ -211,10 +225,12 @@ static int ar_entry_rdev(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_atime(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
+    int num_results;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) >= 2 );
-    int num_results = 0;
+    is_set = ( lua_gettop(L) >= 2 );
+    num_results = 0;
     if ( archive_entry_atime_is_set(self) ) {
         num_results = 2;
         lua_pushnumber(L, archive_entry_atime(self));
@@ -241,10 +257,12 @@ static int ar_entry_atime(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_mtime(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
+    int num_results;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) >= 2 );
-    int num_results = 0;
+    is_set = ( lua_gettop(L) >= 2 );
+    num_results = 0;
     if ( archive_entry_mtime_is_set(self) ) {
         num_results = 2;
         lua_pushnumber(L, archive_entry_mtime(self));
@@ -271,10 +289,12 @@ static int ar_entry_mtime(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_ctime(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
+    int num_results;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) >= 2 );
-    int num_results = 0;
+    is_set = ( lua_gettop(L) >= 2 );
+    num_results = 0;
     if ( archive_entry_ctime_is_set(self) ) {
         num_results = 2;
         lua_pushnumber(L, archive_entry_ctime(self));
@@ -301,10 +321,12 @@ static int ar_entry_ctime(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_birthtime(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
+    int num_results;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) >= 2 );
-    int num_results = 0;
+    is_set = ( lua_gettop(L) >= 2 );
+    num_results = 0;
     if ( archive_entry_birthtime_is_set(self) ) {
         num_results = 2;
         lua_pushnumber(L, archive_entry_birthtime(self));
@@ -331,9 +353,10 @@ static int ar_entry_birthtime(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_size(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     if ( archive_entry_size_is_set(self) ) {
         lua_pushnumber(L, archive_entry_size(self));
     } else {
@@ -352,9 +375,10 @@ static int ar_entry_size(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_sourcepath(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushstring(L, archive_entry_sourcepath(self));
     if ( is_set ) {
         archive_entry_copy_sourcepath(self, lua_tostring(L, 2));
@@ -365,9 +389,10 @@ static int ar_entry_sourcepath(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_symlink(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushstring(L, archive_entry_symlink(self));
     if ( is_set ) {
         archive_entry_copy_symlink(self, lua_tostring(L, 2));
@@ -378,9 +403,10 @@ static int ar_entry_symlink(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_hardlink(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushstring(L, archive_entry_hardlink(self));
     if ( is_set ) {
         archive_entry_copy_hardlink(self, lua_tostring(L, 2));
@@ -391,9 +417,10 @@ static int ar_entry_hardlink(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_entry_pathname(lua_State *L) {
     struct archive_entry* self = *ar_entry_check(L, 1);
+    int is_set;
     if ( NULL == self ) return 0;
 
-    int is_set = ( lua_gettop(L) == 2 );
+    is_set = ( lua_gettop(L) == 2 );
     lua_pushstring(L, archive_entry_pathname(self));
     if ( is_set ) {
         archive_entry_copy_pathname(self, lua_tostring(L, 2));
@@ -403,19 +430,11 @@ static int ar_entry_pathname(lua_State *L) {
 
 //////////////////////////////////////////////////////////////////////
 int ar_entry_init(lua_State *L) {
-    luaL_checktype(L, LUA_TTABLE, -1); // {class}
     static luaL_reg fns[] = {
         { "entry",  ar_entry },
         { "_entry_ref_count", ar_ref_count },
         { NULL, NULL }
     };
-    luaL_register(L, NULL, fns); // {class}
-
-    luaL_newmetatable(L, AR_ENTRY); // {class}, {meta}
-
-    lua_pushvalue(L, -1); // {class}, {meta}, {meta}
-    lua_setfield(L, -2, "__index"); // {class}, {meta}
-
     // So far there are no methods on the entry objects.
     static luaL_reg m_fns[] = {
         { "fflags", ar_entry_fflags },
@@ -440,6 +459,16 @@ int ar_entry_init(lua_State *L) {
         { "__gc",    ar_entry_destroy },
         { NULL, NULL }
     };
+
+    luaL_checktype(L, LUA_TTABLE, -1); // {class}
+
+    luaL_register(L, NULL, fns); // {class}
+
+    luaL_newmetatable(L, AR_ENTRY); // {class}, {meta}
+
+    lua_pushvalue(L, -1); // {class}, {meta}, {meta}
+    lua_setfield(L, -2, "__index"); // {class}, {meta}
+
     luaL_register(L, NULL, m_fns); // {1}
 
     lua_pop(L, 1);

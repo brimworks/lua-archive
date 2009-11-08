@@ -39,12 +39,11 @@ static int ar_version(lua_State *L) {
 
 //////////////////////////////////////////////////////////////////////
 LUALIB_API int luaopen_archive(lua_State *L) {
-    lua_newtable(L);
-
     static luaL_reg fns[] = {
         { "version",     ar_version },
         { NULL, NULL }
     };
+    lua_newtable(L);
     luaL_register(L, NULL, fns);
 
     ar_registry_init(L);

@@ -47,10 +47,10 @@ static int call_setters(lua_State *L,
     const char* name=names_str;
     size_t name_len=0;
     for ( ; '\0' != *name; name += name_len ) {
+        int idx = 0;
         while ( '\0' != *name && ! isalnum(*name) ) name++;
         while ( isalnum(*(name+name_len)) ) name_len++;
         if ( ! *name ) continue;
-        int idx = 0;
         for ( ;; idx++ ) {
             if ( names[idx].name == NULL ) {
                 lua_pushlstring(L, name, name_len);
@@ -70,9 +70,34 @@ static int call_setters(lua_State *L,
 //////////////////////////////////////////////////////////////////////
 // Constructor:
 static int ar_read(lua_State *L) {
+    struct archive** self_ref;
+    static named_setter format_names[] = {
+        /* Copied from archive.h */
+        { "all",       archive_read_support_format_all },
+        { "ar",        archive_read_support_format_ar },
+        { "cpio",      archive_read_support_format_cpio },
+        { "empty",     archive_read_support_format_empty },
+        { "gnutar",    archive_read_support_format_gnutar },
+        { "iso9660",   archive_read_support_format_iso9660 },
+        { "mtree",     archive_read_support_format_mtree },
+        { "tar",       archive_read_support_format_tar },
+        { "zip",       archive_read_support_format_zip },
+        { NULL,        NULL }
+    };
+    static named_setter compression_names[] = {
+        { "all",      archive_read_support_compression_all },
+        { "bzip2",    archive_read_support_compression_bzip2 },
+        { "compress", archive_read_support_compression_compress },
+        { "gzip",     archive_read_support_compression_gzip },
+        { "lzma",     archive_read_support_compression_lzma },
+        { "none",     archive_read_support_compression_none },
+        { "xz",       archive_read_support_compression_xz },
+        { NULL,       NULL }
+    };
+
     luaL_checktype(L, 1, LUA_TTABLE);
 
-    struct archive** self_ref = (struct archive**)
+    self_ref = (struct archive**)
         lua_newuserdata(L, sizeof(struct archive*)); // {ud}
     *self_ref = NULL;
     luaL_getmetatable(L, AR_READ); // {ud}, [read]
@@ -107,19 +132,6 @@ static int ar_read(lua_State *L) {
         lua_pop(L, 1);
         lua_pushliteral(L, "all");
     }
-    static named_setter format_names[] = {
-        /* Copied from archive.h */
-        { "all",       archive_read_support_format_all },
-        { "ar",        archive_read_support_format_ar },
-        { "cpio",      archive_read_support_format_cpio },
-        { "empty",     archive_read_support_format_empty },
-        { "gnutar",    archive_read_support_format_gnutar },
-        { "iso9660",   archive_read_support_format_iso9660 },
-        { "mtree",     archive_read_support_format_mtree },
-        { "tar",       archive_read_support_format_tar },
-        { "zip",       archive_read_support_format_zip },
-        { NULL,        NULL }
-    };
     if ( 0 == call_setters(L,
                            *self_ref,
                            "archive_read_support_format_",
@@ -138,16 +150,6 @@ static int ar_read(lua_State *L) {
         lua_pop(L, 1);
         lua_pushliteral(L, "none");
     }
-    static named_setter compression_names[] = {
-        { "all",      archive_read_support_compression_all },
-        { "bzip2",    archive_read_support_compression_bzip2 },
-        { "compress", archive_read_support_compression_compress },
-        { "gzip",     archive_read_support_compression_gzip },
-        { "lzma",     archive_read_support_compression_lzma },
-        { "none",     archive_read_support_compression_none },
-        { "xz",       archive_read_support_compression_xz },
-        { NULL,       NULL }
-    };
     call_setters(L, 
                  *self_ref,
                  "archive_read_support_compression_",
@@ -223,6 +225,7 @@ static __LA_SSIZE_T ar_read_cb(struct archive * self,
                                const void **result)
 {
     lua_State* L = (lua_State*)opaque;
+    size_t result_len;
     *result = NULL;
 
     // We are missing!?
@@ -240,7 +243,7 @@ static __LA_SSIZE_T ar_read_cb(struct archive * self,
         lua_pop(L, 2); // <nothing>
         return -1;
     }
-    size_t result_len;
+
     *result = lua_tolstring(L, -1, &result_len); // {ud}, result
 
     // We directly return the raw internal buffer, so we need to keep
@@ -257,14 +260,16 @@ static __LA_SSIZE_T ar_read_cb(struct archive * self,
 
 //////////////////////////////////////////////////////////////////////
 static int ar_read_next_header(lua_State *L) {
+    struct archive_entry* entry;
     struct archive* self = *ar_read_check(L, 1); // {ud}
+    int result;
     if ( NULL == self ) err("NULL archive{read}!");
 
     lua_pushcfunction(L, ar_entry); // {ud}, ar_entry
     lua_call(L, 0, 1); // {ud}, header
 
-    struct archive_entry* entry = *ar_entry_check(L, -1);
-    int result = archive_read_next_header2(self, entry);
+    entry = *ar_entry_check(L, -1);
+    result = archive_read_next_header2(self, entry);
     if ( ARCHIVE_EOF == result ) {
         lua_pop(L, 1); // {ud}
         lua_pushnil(L); // {ud}, nil
@@ -286,12 +291,14 @@ static int ar_read_headers(lua_State *L) {
 //////////////////////////////////////////////////////////////////////
 static int ar_read_data(lua_State *L) {
     struct archive* self = *ar_read_check(L, 1);
-    if ( NULL == self ) err("NULL archive{read}!");
-
     const void* buff;
     size_t buff_len;
     off_t offset;
-    int result = archive_read_data_block(self, &buff, &buff_len, &offset);
+    int result;
+
+    if ( NULL == self ) err("NULL archive{read}!");
+
+    result = archive_read_data_block(self, &buff, &buff_len, &offset);
     if ( ARCHIVE_EOF == result ) {
         return 0;
     } else if ( ARCHIVE_OK != result ) {
@@ -310,20 +317,11 @@ static int ar_read_data(lua_State *L) {
 // of the stack, and the archive{read} metatable is registered.
 //////////////////////////////////////////////////////////////////////
 int ar_read_init(lua_State *L) {
-    luaL_checktype(L, LUA_TTABLE, -1); // {class}
-
     static luaL_reg fns[] = {
         { "read",  ar_read },
         { "_read_ref_count", ar_ref_count },
         { NULL, NULL }
     };
-    luaL_register(L, NULL, fns); // {class}
-
-    luaL_newmetatable(L, AR_READ); // {class}, {meta}
-
-    lua_pushvalue(L, -1); // {class}, {meta}, {meta}
-    lua_setfield(L, -2, "__index"); // {class}, {meta}
-
     static luaL_reg m_fns[] = {
         { "next_header",  ar_read_next_header },
         { "headers",      ar_read_headers },
@@ -332,6 +330,16 @@ int ar_read_init(lua_State *L) {
         { "__gc",         ar_read_destroy },
         { NULL, NULL }
     };
+
+    luaL_checktype(L, LUA_TTABLE, -1); // {class}
+
+    luaL_register(L, NULL, fns); // {class}
+
+    luaL_newmetatable(L, AR_READ); // {class}, {meta}
+
+    lua_pushvalue(L, -1); // {class}, {meta}, {meta}
+    lua_setfield(L, -2, "__index"); // {class}, {meta}
+
     luaL_register(L, NULL, m_fns); // {class}, {meta}
 
     lua_pop(L, 1); // {class}

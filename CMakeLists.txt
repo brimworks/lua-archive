@@ -6,7 +6,7 @@
 # Please note that the package source code is licensed under its own
 # license.
 
-PROJECT(luaarchive C)
+PROJECT(lua-archive C)
 CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
 
 # Basic configurations

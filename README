@@ -28,8 +28,8 @@
 To use this library, you need libarchive, get it here:
      http://code.google.com/p/libarchive/
 
-To build this library, you need GNU Make and make-common here:
-    http://github.com/brimworks/make-common
+To build this library, you need CMake, get it here:
+    http://www.cmake.org/cmake/resources/software.html
 
 Loading the library:
 

@@ -1,5 +1,9 @@
 print "1..6"
 
+local src_dir, build_dir = ...
+package.path  = src_dir .. "?.lua;" .. package.path
+package.cpath = build_dir .. "?.so;" .. package.cpath
+
 local tap     = require("tap")
 local archive = require("archive")
 local ok      = tap.ok
@@ -188,3 +192,4 @@ function header_is(got_header, expected_header)
 end
 
 main()
+tap.exit()

@@ -32,7 +32,7 @@ CMAKE_MINIMUM_REQUIRED (VERSION 2.6)
     ar.c ar_write.c ar_registry.c ar_read.c ar_entry.c archive.def)
   SET_TARGET_PROPERTIES(cmod_archive PROPERTIES PREFIX "")
   SET_TARGET_PROPERTIES(cmod_archive PROPERTIES OUTPUT_NAME archive)
-  TARGET_LINK_LIBRARIES(cmod_archive ${LUA_LIBRARY} ${LIBARCHIVE_LIBRARY})  
+  TARGET_LINK_LIBRARIES(cmod_archive ${LUA_LIBRARIES} ${LIBARCHIVE_LIBRARY})  
 # / build archive.so
 
 # Define how to test archive.so:

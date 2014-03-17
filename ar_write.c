@@ -319,12 +319,12 @@ static int ar_write_data(lua_State *L) {
 // of the stack, and the archive{write} metatable is registered.
 //////////////////////////////////////////////////////////////////////
 int ar_write_init(lua_State *L) {
-    static luaL_reg fns[] = {
+    static luaL_Reg fns[] = {
         { "write",  ar_write },
         { "_write_ref_count", ar_ref_count },
         { NULL, NULL }
     };
-    static luaL_reg m_fns[] = {
+    static luaL_Reg m_fns[] = {
         { "header",  ar_write_header },
         { "data",    ar_write_data },
         { "close",   ar_write_destroy },

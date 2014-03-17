@@ -430,13 +430,13 @@ static int ar_entry_pathname(lua_State *L) {
 
 //////////////////////////////////////////////////////////////////////
 int ar_entry_init(lua_State *L) {
-    static luaL_reg fns[] = {
+    static luaL_Reg fns[] = {
         { "entry",  ar_entry },
         { "_entry_ref_count", ar_ref_count },
         { NULL, NULL }
     };
     // So far there are no methods on the entry objects.
-    static luaL_reg m_fns[] = {
+    static luaL_Reg m_fns[] = {
         { "fflags", ar_entry_fflags },
         { "dev", ar_entry_dev },
         { "ino", ar_entry_ino },

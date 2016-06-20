@@ -114,7 +114,7 @@ static int ar_read(lua_State *L) {
     lua_getfield(L, 1, "reader"); // {ud}, {fenv}, fn
     if ( ! lua_isfunction(L, -1) ) err("MissingArgument: required parameter 'reader' must be a function");
     lua_setfield(L, -2, "reader"); // {ud}, {fenv}
-    lua_setfenv(L, -2); // {ud}
+    lua_setuservalue(L, -2); // {ud}
 
     // Do it the easy way for now... perhaps in the future we will
     // have a parameter to support toggling which algorithms are
@@ -179,7 +179,7 @@ static int ar_read(lua_State *L) {
 // the index to the argument for which to pass to reader exists.  If
 // idx is zero, nil is passed into reader.
 static void ar_read_get_reader(lua_State *L, int self_idx) {
-    lua_getfenv(L, self_idx);        // {env}
+    lua_getuservalue(L, self_idx);        // {env}
     lua_pushliteral(L, "reader");    // {env}, "reader"
     lua_rawget(L, -2);               // {env}, reader
     lua_insert(L, -2);              // reader, {env}
@@ -249,7 +249,7 @@ static __LA_SSIZE_T ar_read_cb(struct archive * self,
 
     // We directly return the raw internal buffer, so we need to keep
     // a reference around:
-    lua_getfenv(L, -2); // {ud}, result, {fenv}
+    lua_getuservalue(L, -2); // {ud}, result, {fenv}
     lua_insert(L, -2); // {ud}, {fenv}, result
     lua_pushliteral(L, "read_buffer"); // {ud}, {fenv}, result, "read_buffer"
     lua_insert(L, -2); // {ud}, {fenv}, "read_buffer", result

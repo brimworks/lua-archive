@@ -84,7 +84,7 @@ static int ar_write(lua_State *L) {
         err("MissingArgument: required parameter 'writer' must be a function");
     }
     lua_setfield(L, -2, "writer");
-    lua_setfenv(L, -2); // {ud}
+    lua_setuservalue(L, -2); // {ud}
 
     // Extract various fields and prepare the archive:
     lua_getfield(L, 1, "bytes_per_block");
@@ -197,7 +197,7 @@ static int ar_write(lua_State *L) {
 // the index to the argument for which to pass to writer exists.  If
 // idx is zero, nil is passed into writer.
 static void ar_write_get_writer(lua_State *L, int self_idx) {
-    lua_getfenv(L, self_idx);        // {env}
+    lua_getuservalue(L, self_idx);        // {env}
     lua_pushliteral(L, "writer");    // {env}, "writer"
     lua_rawget(L, -2);               // {env}, writer
     lua_insert(L, -2);              // writer, {env}

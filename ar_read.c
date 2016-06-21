@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ar.h"
 #include "ar_read.h"
 #include "ar_entry.h"
 #include "ar_registry.h"
@@ -317,12 +318,12 @@ static int ar_read_data(lua_State *L) {
 // of the stack, and the archive{read} metatable is registered.
 //////////////////////////////////////////////////////////////////////
 int ar_read_init(lua_State *L) {
-    static luaL_reg fns[] = {
+    static luaL_Reg fns[] = {
         { "read",  ar_read },
         { "_read_ref_count", ar_ref_count },
         { NULL, NULL }
     };
-    static luaL_reg m_fns[] = {
+    static luaL_Reg m_fns[] = {
         { "next_header",  ar_read_next_header },
         { "headers",      ar_read_headers },
         { "data",         ar_read_data },

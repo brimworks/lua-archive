@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ar.h"
 #include "ar_write.h"
 #include "ar_entry.h"
 #include "ar_registry.h"
@@ -83,7 +84,7 @@ static int ar_write(lua_State *L) {
         err("MissingArgument: required parameter 'writer' must be a function");
     }
     lua_setfield(L, -2, "writer");
-    lua_setfenv(L, -2); // {ud}
+    lua_setuservalue(L, -2); // {ud}
 
     // Extract various fields and prepare the archive:
     lua_getfield(L, 1, "bytes_per_block");
@@ -154,11 +155,11 @@ static int ar_write(lua_State *L) {
             const char *name;
             int (*setter)(struct archive *);
         } names[] = {
-            { "bzip2",    archive_write_set_compression_bzip2 },
-            { "compress", archive_write_set_compression_compress },
-            { "gzip",     archive_write_set_compression_gzip },
-            { "lzma",     archive_write_set_compression_lzma },
-            { "xz",       archive_write_set_compression_xz },
+            { "bzip2",    archive_write_add_filter_bzip2 },
+            { "compress", archive_write_add_filter_compress },
+            { "gzip",     archive_write_add_filter_gzip },
+            { "lzma",     archive_write_add_filter_lzma },
+            { "xz",       archive_write_add_filter_xz },
             { NULL,       NULL }
         };
         int idx = 0;
@@ -196,7 +197,7 @@ static int ar_write(lua_State *L) {
 // the index to the argument for which to pass to writer exists.  If
 // idx is zero, nil is passed into writer.
 static void ar_write_get_writer(lua_State *L, int self_idx) {
-    lua_getfenv(L, self_idx);        // {env}
+    lua_getuservalue(L, self_idx);        // {env}
     lua_pushliteral(L, "writer");    // {env}, "writer"
     lua_rawget(L, -2);               // {env}, writer
     lua_insert(L, -2);              // writer, {env}
@@ -215,7 +216,7 @@ static int ar_write_destroy(lua_State *L) {
 
     if ( ARCHIVE_OK != archive_write_close(*self_ref) ) {
         lua_pushfstring(L, "archive_write_close: %s", archive_error_string(*self_ref));
-        archive_write_finish(*self_ref);
+        archive_write_free(*self_ref);
         __ref_count--;
         *self_ref = NULL;
         lua_error(L);
@@ -228,8 +229,8 @@ static int ar_write_destroy(lua_State *L) {
         lua_call(L, 2, 1); // {self}, result
     }
 
-    if ( ARCHIVE_OK != archive_write_finish(*self_ref) ) {
-        luaL_error(L, "archive_write_finish: %s", archive_error_string(*self_ref));
+    if ( ARCHIVE_OK != archive_write_free(*self_ref) ) {
+        luaL_error(L, "archive_write_free: %s", archive_error_string(*self_ref));
     }
     __ref_count--;
     *self_ref = NULL;
@@ -303,7 +304,7 @@ static int ar_write_data(lua_State *L) {
 
     data = lua_tolstring(L, 2, &len);
 
-    archive_write_data(self, data, len);
+    wrote = archive_write_data(self, data, len);
     if ( -1 == wrote ) {
         err("archive_write_data: %s", archive_error_string(self));
     }
@@ -319,12 +320,12 @@ static int ar_write_data(lua_State *L) {
 // of the stack, and the archive{write} metatable is registered.
 //////////////////////////////////////////////////////////////////////
 int ar_write_init(lua_State *L) {
-    static luaL_reg fns[] = {
+    static luaL_Reg fns[] = {
         { "write",  ar_write },
         { "_write_ref_count", ar_ref_count },
         { NULL, NULL }
     };
-    static luaL_reg m_fns[] = {
+    static luaL_Reg m_fns[] = {
         { "header",  ar_write_header },
         { "data",    ar_write_data },
         { "close",   ar_write_destroy },

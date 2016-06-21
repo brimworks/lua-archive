@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ar.h"
 #include "ar_registry.h"
 #include "ar_read.h"
 #include "ar_write.h"
@@ -39,7 +40,7 @@ static int ar_version(lua_State *L) {
 
 //////////////////////////////////////////////////////////////////////
 LUALIB_API int luaopen_archive(lua_State *L) {
-    static luaL_reg fns[] = {
+    static luaL_Reg fns[] = {
         { "version",     ar_version },
         { NULL, NULL }
     };

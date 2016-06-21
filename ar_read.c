@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ar.h"
 #include "ar_read.h"
 #include "ar_entry.h"
 #include "ar_registry.h"
@@ -85,13 +86,13 @@ static int ar_read(lua_State *L) {
         { NULL,        NULL }
     };
     static named_setter compression_names[] = {
-        { "all",      archive_read_support_compression_all },
-        { "bzip2",    archive_read_support_compression_bzip2 },
-        { "compress", archive_read_support_compression_compress },
-        { "gzip",     archive_read_support_compression_gzip },
-        { "lzma",     archive_read_support_compression_lzma },
-        { "none",     archive_read_support_compression_none },
-        { "xz",       archive_read_support_compression_xz },
+        { "all",      archive_read_support_filter_all },
+        { "bzip2",    archive_read_support_filter_bzip2 },
+        { "compress", archive_read_support_filter_compress },
+        { "gzip",     archive_read_support_filter_gzip },
+        { "lzma",     archive_read_support_filter_lzma },
+        { "none",     archive_read_support_filter_none },
+        { "xz",       archive_read_support_filter_xz },
         { NULL,       NULL }
     };
 
@@ -113,12 +114,12 @@ static int ar_read(lua_State *L) {
     lua_getfield(L, 1, "reader"); // {ud}, {fenv}, fn
     if ( ! lua_isfunction(L, -1) ) err("MissingArgument: required parameter 'reader' must be a function");
     lua_setfield(L, -2, "reader"); // {ud}, {fenv}
-    lua_setfenv(L, -2); // {ud}
+    lua_setuservalue(L, -2); // {ud}
 
     // Do it the easy way for now... perhaps in the future we will
     // have a parameter to support toggling which algorithms are
     // supported:
-    if ( ARCHIVE_OK != archive_read_support_compression_all(*self_ref) ) {
+    if ( ARCHIVE_OK != archive_read_support_filter_all(*self_ref) ) {
         err("archive_read_support_compression_all: %s", archive_error_string(*self_ref));
     }
     if ( ARCHIVE_OK != archive_read_support_format_all(*self_ref) ) {
@@ -178,7 +179,7 @@ static int ar_read(lua_State *L) {
 // the index to the argument for which to pass to reader exists.  If
 // idx is zero, nil is passed into reader.
 static void ar_read_get_reader(lua_State *L, int self_idx) {
-    lua_getfenv(L, self_idx);        // {env}
+    lua_getuservalue(L, self_idx);        // {env}
     lua_pushliteral(L, "reader");    // {env}, "reader"
     lua_rawget(L, -2);               // {env}, reader
     lua_insert(L, -2);              // reader, {env}
@@ -197,7 +198,7 @@ static int ar_read_destroy(lua_State *L) {
 
     if ( ARCHIVE_OK != archive_read_close(*self_ref) ) {
         lua_pushfstring(L, "archive_read_close: %s", archive_error_string(*self_ref));
-        archive_read_finish(*self_ref);
+        archive_read_free(*self_ref);
         __ref_count--;
         *self_ref = NULL;
         lua_error(L);
@@ -210,8 +211,8 @@ static int ar_read_destroy(lua_State *L) {
         lua_call(L, 2, 1); // {self}, result
     }
 
-    if ( ARCHIVE_OK != archive_read_finish(*self_ref) ) {
-        luaL_error(L, "archive_read_finish: %s", archive_error_string(*self_ref));
+    if ( ARCHIVE_OK != archive_read_free(*self_ref) ) {
+        luaL_error(L, "archive_read_free: %s", archive_error_string(*self_ref));
     }
     __ref_count--;
     *self_ref = NULL;
@@ -248,7 +249,7 @@ static __LA_SSIZE_T ar_read_cb(struct archive * self,
 
     // We directly return the raw internal buffer, so we need to keep
     // a reference around:
-    lua_getfenv(L, -2); // {ud}, result, {fenv}
+    lua_getuservalue(L, -2); // {ud}, result, {fenv}
     lua_insert(L, -2); // {ud}, {fenv}, result
     lua_pushliteral(L, "read_buffer"); // {ud}, {fenv}, result, "read_buffer"
     lua_insert(L, -2); // {ud}, {fenv}, "read_buffer", result
@@ -317,12 +318,12 @@ static int ar_read_data(lua_State *L) {
 // of the stack, and the archive{read} metatable is registered.
 //////////////////////////////////////////////////////////////////////
 int ar_read_init(lua_State *L) {
-    static luaL_reg fns[] = {
+    static luaL_Reg fns[] = {
         { "read",  ar_read },
         { "_read_ref_count", ar_ref_count },
         { NULL, NULL }
     };
-    static luaL_reg m_fns[] = {
+    static luaL_Reg m_fns[] = {
         { "next_header",  ar_read_next_header },
         { "headers",      ar_read_headers },
         { "data",         ar_read_data },

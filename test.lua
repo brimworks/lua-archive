@@ -74,7 +74,7 @@ function test_basic()
 
    -- Test creating our own "normal" entry:
    local normal_entry = {
-      fflags="nosappnd,dump,archive",
+      fflags="nosappnd,dump",
       dev=200,
       ino=1000,
       mode=0x80FF,

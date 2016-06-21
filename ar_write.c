@@ -304,7 +304,7 @@ static int ar_write_data(lua_State *L) {
 
     data = lua_tolstring(L, 2, &len);
 
-    archive_write_data(self, data, len);
+    wrote = archive_write_data(self, data, len);
     if ( -1 == wrote ) {
         err("archive_write_data: %s", archive_error_string(self));
     }

@@ -31,6 +31,7 @@ int ar_entry(lua_State *L) {
     *self_ref = archive_entry_new();
 
     if ( lua_istable(L, 1) ) {
+        int mt;
         // If given a sourcepath, copy stat buffer from there:
         lua_pushliteral(L, "sourcepath"); // ..., {ud}, "sourcepath"
         lua_rawget(L, 1); // ..., {ud}, src
@@ -47,7 +48,9 @@ int ar_entry(lua_State *L) {
             archive_entry_set_mode(*self_ref, S_IFREG);
         }
         lua_pop(L, 1); // ... {ud}
-        assert(0 != lua_getmetatable(L, -1)); // ..., {ud}, {meta}
+        /* XXX: optimized away by assert */
+        mt = lua_getmetatable(L, -1); // ..., {ud}, {meta}
+        assert(mt != 0);
 
         // Iterate over the table and call the method with that name
         lua_pushnil(L); // ..., {ud}, {meta}, nil
@@ -430,13 +433,13 @@ static int ar_entry_pathname(lua_State *L) {
 
 //////////////////////////////////////////////////////////////////////
 int ar_entry_init(lua_State *L) {
-    static luaL_reg fns[] = {
+    static luaL_Reg fns[] = {
         { "entry",  ar_entry },
         { "_entry_ref_count", ar_ref_count },
         { NULL, NULL }
     };
     // So far there are no methods on the entry objects.
-    static luaL_reg m_fns[] = {
+    static luaL_Reg m_fns[] = {
         { "fflags", ar_entry_fflags },
         { "dev", ar_entry_dev },
         { "ino", ar_entry_ino },

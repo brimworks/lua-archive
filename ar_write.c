@@ -154,11 +154,11 @@ static int ar_write(lua_State *L) {
             const char *name;
             int (*setter)(struct archive *);
         } names[] = {
-            { "bzip2",    archive_write_set_compression_bzip2 },
-            { "compress", archive_write_set_compression_compress },
-            { "gzip",     archive_write_set_compression_gzip },
-            { "lzma",     archive_write_set_compression_lzma },
-            { "xz",       archive_write_set_compression_xz },
+            { "bzip2",    archive_write_add_filter_bzip2 },
+            { "compress", archive_write_add_filter_compress },
+            { "gzip",     archive_write_add_filter_gzip },
+            { "lzma",     archive_write_add_filter_lzma },
+            { "xz",       archive_write_add_filter_xz },
             { NULL,       NULL }
         };
         int idx = 0;
@@ -215,7 +215,7 @@ static int ar_write_destroy(lua_State *L) {
 
     if ( ARCHIVE_OK != archive_write_close(*self_ref) ) {
         lua_pushfstring(L, "archive_write_close: %s", archive_error_string(*self_ref));
-        archive_write_finish(*self_ref);
+        archive_write_free(*self_ref);
         __ref_count--;
         *self_ref = NULL;
         lua_error(L);
@@ -228,8 +228,8 @@ static int ar_write_destroy(lua_State *L) {
         lua_call(L, 2, 1); // {self}, result
     }
 
-    if ( ARCHIVE_OK != archive_write_finish(*self_ref) ) {
-        luaL_error(L, "archive_write_finish: %s", archive_error_string(*self_ref));
+    if ( ARCHIVE_OK != archive_write_free(*self_ref) ) {
+        luaL_error(L, "archive_write_free: %s", archive_error_string(*self_ref));
     }
     __ref_count--;
     *self_ref = NULL;

@@ -85,13 +85,13 @@ static int ar_read(lua_State *L) {
         { NULL,        NULL }
     };
     static named_setter compression_names[] = {
-        { "all",      archive_read_support_compression_all },
-        { "bzip2",    archive_read_support_compression_bzip2 },
-        { "compress", archive_read_support_compression_compress },
-        { "gzip",     archive_read_support_compression_gzip },
-        { "lzma",     archive_read_support_compression_lzma },
-        { "none",     archive_read_support_compression_none },
-        { "xz",       archive_read_support_compression_xz },
+        { "all",      archive_read_support_filter_all },
+        { "bzip2",    archive_read_support_filter_bzip2 },
+        { "compress", archive_read_support_filter_compress },
+        { "gzip",     archive_read_support_filter_gzip },
+        { "lzma",     archive_read_support_filter_lzma },
+        { "none",     archive_read_support_filter_none },
+        { "xz",       archive_read_support_filter_xz },
         { NULL,       NULL }
     };
 
@@ -118,8 +118,8 @@ static int ar_read(lua_State *L) {
     // Do it the easy way for now... perhaps in the future we will
     // have a parameter to support toggling which algorithms are
     // supported:
-    if ( ARCHIVE_OK != archive_read_support_compression_all(*self_ref) ) {
-        err("archive_read_support_compression_all: %s", archive_error_string(*self_ref));
+    if ( ARCHIVE_OK != archive_read_support_filter_all(*self_ref) ) {
+        err("archive_read_support_filter_all: %s", archive_error_string(*self_ref));
     }
     if ( ARCHIVE_OK != archive_read_support_format_all(*self_ref) ) {
         err("archive_read_support_format_all: %s", archive_error_string(*self_ref));
@@ -197,7 +197,7 @@ static int ar_read_destroy(lua_State *L) {
 
     if ( ARCHIVE_OK != archive_read_close(*self_ref) ) {
         lua_pushfstring(L, "archive_read_close: %s", archive_error_string(*self_ref));
-        archive_read_finish(*self_ref);
+        archive_read_free(*self_ref);
         __ref_count--;
         *self_ref = NULL;
         lua_error(L);
@@ -210,8 +210,8 @@ static int ar_read_destroy(lua_State *L) {
         lua_call(L, 2, 1); // {self}, result
     }
 
-    if ( ARCHIVE_OK != archive_read_finish(*self_ref) ) {
-        luaL_error(L, "archive_read_finish: %s", archive_error_string(*self_ref));
+    if ( ARCHIVE_OK != archive_read_free(*self_ref) ) {
+        luaL_error(L, "archive_read_free: %s", archive_error_string(*self_ref));
     }
     __ref_count--;
     *self_ref = NULL;

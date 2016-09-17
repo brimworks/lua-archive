@@ -293,7 +293,7 @@ static int ar_read_data(lua_State *L) {
     struct archive* self = *ar_read_check(L, 1);
     const void* buff;
     size_t buff_len;
-    off_t offset;
+    int64_t offset;
     int result;
 
     if ( NULL == self ) err("NULL archive{read}!");
